@@ -9,13 +9,13 @@ added Stripe" and "it added a board that answers 404" must not look the same.
 
 from __future__ import annotations
 
-import asyncio
 from typing import Annotated, Any
 
 import typer
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
+from scout_careers.cli._async import run as run_async
 from scout_careers.cli.output import dash, echo, echo_json, echo_table, error
 from scout_careers.common.config import Settings, get_settings
 from scout_careers.common.errors import DeniedByPolicy
@@ -154,7 +154,7 @@ def add(
 ) -> None:
     """Detect the board behind a URL, probe it, and add the company."""
     try:
-        code = asyncio.run(
+        code = run_async(
             _add(url, name=name, tier=tier, tags=tags or [], force=force, as_json=as_json)
         )
     except DeniedByPolicy as exc:
@@ -244,7 +244,7 @@ def list_command(
     as_json: Annotated[bool, typer.Option("--json", help="Machine-readable output.")] = False,
 ) -> None:
     """List companies, their sources and each source's health."""
-    asyncio.run(_list(status, tier, as_json))
+    run_async(_list(status, tier, as_json))
 
 
 async def _set_status(company_id: int, status: CompanyStatus) -> str:
@@ -258,7 +258,7 @@ def disable(
     company_id: Annotated[int, typer.Argument(help="The company id.")],
 ) -> None:
     """Pause a company and stop every one of its sources polling."""
-    name = asyncio.run(_set_status(company_id, CompanyStatus.PAUSED))
+    name = run_async(_set_status(company_id, CompanyStatus.PAUSED))
     echo(f"Paused {name}; its sources will not be polled.")
 
 
@@ -267,7 +267,7 @@ def enable(
     company_id: Annotated[int, typer.Argument(help="The company id.")],
 ) -> None:
     """Resume a company and re-enable its sources, clearing their failure counts."""
-    name = asyncio.run(_set_status(company_id, CompanyStatus.TRACKING))
+    name = run_async(_set_status(company_id, CompanyStatus.TRACKING))
     echo(f"Tracking {name}; its sources are enabled and their failure counts are reset.")
 
 

@@ -352,9 +352,9 @@ companies:
   - name: Perplexity
     slug: perplexity
     adapter: ashby
-    config: { board_name: perplexity.ai, include_compensation: true }
+    config: { board_name: perplexity, include_compensation: true }
     tier: strong
-    careers_url: https://jobs.ashbyhq.com/perplexity.ai
+    careers_url: https://jobs.ashbyhq.com/perplexity
     website: https://perplexity.ai
     hq_location: San Francisco, US
     tags: [sector:ai-research, stage:series-c-plus, role:ai-product]
@@ -382,9 +382,10 @@ companies:
   - name: Anysphere (Cursor)
     slug: anysphere
     adapter: ashby
-    config: { board_name: anysphere, include_compensation: true }
+    # The board is named for the product, not the company (probed 2026-09-05).
+    config: { board_name: cursor, include_compensation: true }
     tier: strong
-    careers_url: https://jobs.ashbyhq.com/anysphere
+    careers_url: https://jobs.ashbyhq.com/cursor
     website: https://cursor.com
     hq_location: San Francisco, US
     tags: [sector:devtools, stage:series-c-plus, role:ai-platform]
@@ -458,3 +459,30 @@ companies:
     website: https://replit.com
     hq_location: Remote
     tags: [sector:devtools, stage:series-c-plus, role:ai-platform]
+
+  # -------------------------------------------------------------- mail alerts
+  # Not an employer. A mailbox, and the only source in this file whose postings
+  # do not belong to the company that owns it: a LinkedIn digest carries roles
+  # at many employers, and `ingest/resolve.py` files each one under the company
+  # it actually names (SOURCE_ADAPTERS.md §7.3). Leads it cannot attribute land
+  # on the reserved `unmatched` row, which is the main way this registry is
+  # expected to grow — a lead at a company not tracked here is a prompt to add
+  # its real board.
+  #
+  # This source issues no HTTP request of any kind. LinkedIn, Naukri and Indeed
+  # are on NEVER_FETCH_HOSTS and stay there; the alert mail is read over the
+  # Gmail API and the link inside it is stored for a human to click, never
+  # followed. It runs only while MAIL_ENABLED is true and `scout-careers auth
+  # gmail` has been completed; otherwise it reports `disabled` and counts
+  # against nobody.
+  #
+  # `senders` is left at the MailAlertConfig default (LinkedIn, Naukri, Indeed).
+  - name: Job alerts (mailbox)
+    slug: job-alerts
+    adapter: mail_alert
+    config: { label: job-alerts, lookback_hours: 26 }
+    tier: volume
+    # `origin` is the axis for where a registry row came from. Tags are
+    # axis:value and the axes are closed (COMPANY_REGISTRY.md §5.1) — a bare
+    # word is refused, now at load time rather than mid-write.
+    tags: [origin:mail-alert]

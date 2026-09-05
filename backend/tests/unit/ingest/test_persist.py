@@ -46,12 +46,12 @@ def test_unknown_identity_is_new() -> None:
 
 
 def test_same_identity_with_a_moved_hash_is_updated() -> None:
-    stored = ExistingPosting(id="01A", content_hash="old")
+    stored = ExistingPosting(id="01A", content_hash="old", company_id=3)
     assert classify(stored, "new") is Change.UPDATED
 
 
 def test_same_identity_with_the_same_hash_is_unchanged() -> None:
-    stored = ExistingPosting(id="01A", content_hash="same")
+    stored = ExistingPosting(id="01A", content_hash="same", company_id=3)
     assert classify(stored, "same") is Change.UNCHANGED
 
 
@@ -62,8 +62,8 @@ def test_plan_buckets_all_three_kinds() -> None:
         make_posting(external_id="3", description_text="Brand new."),
     ]
     existing = {
-        "1": ExistingPosting(id="01ONE", content_hash=content_hash(DESCRIPTION)),
-        "2": ExistingPosting(id="01TWO", content_hash=content_hash("stale text")),
+        "1": ExistingPosting(id="01ONE", content_hash=content_hash(DESCRIPTION), company_id=3),
+        "2": ExistingPosting(id="01TWO", content_hash=content_hash("stale text"), company_id=3),
     }
     plan = _plan(postings, existing)
 
@@ -77,7 +77,7 @@ def test_plan_buckets_all_three_kinds() -> None:
 
 
 def test_updated_row_keeps_its_existing_ulid() -> None:
-    existing = {"2": ExistingPosting(id="01TWO", content_hash="stale")}
+    existing = {"2": ExistingPosting(id="01TWO", content_hash="stale", company_id=3)}
     plan = _plan([make_posting(external_id="2")], existing)
     assert plan.upserts[0]["id"] == "01TWO"
 
@@ -110,7 +110,7 @@ def test_same_posting_in_different_html_wrapping_keeps_the_same_hash() -> None:
     )
     assert content_hash(first) == content_hash(second)
 
-    stored = {"1": ExistingPosting(id="01ONE", content_hash=content_hash(first))}
+    stored = {"1": ExistingPosting(id="01ONE", content_hash=content_hash(first), company_id=3)}
     plan = _plan([make_posting(external_id="1", description_text=second)], stored)
 
     assert plan.counts.unchanged == 1
@@ -119,7 +119,9 @@ def test_same_posting_in_different_html_wrapping_keeps_the_same_hash() -> None:
 
 
 def test_zero_width_characters_do_not_look_like_an_edit() -> None:
-    stored = {"1": ExistingPosting(id="01ONE", content_hash=content_hash(DESCRIPTION))}
+    stored = {
+        "1": ExistingPosting(id="01ONE", content_hash=content_hash(DESCRIPTION), company_id=3)
+    }
     pasted = DESCRIPTION.replace(" ", "​ ", 1)
     plan = _plan([make_posting(external_id="1", description_text=pasted)], stored)
     assert plan.counts.unchanged == 1

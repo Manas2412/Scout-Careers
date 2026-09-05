@@ -43,6 +43,8 @@ from scout_careers.common.errors import AdapterConfigError, ScoutError, Upstream
 from scout_careers.common.logging import get_logger
 from scout_careers.common.types import AtsType
 from scout_careers.sources._shared import (
+    NullIsEmptyList,
+    NullIsEmptyModel,
     bound_description,
     company_guess,
     config_error,
@@ -80,7 +82,10 @@ class _LeverCategories(BaseModel):
     department: str | None = None
     team: str | None = None
     location: str | None = None
-    allLocations: list[str] = Field(default_factory=list)  # noqa: N815 - upstream spelling
+    # Defaulted fields tolerate an explicit null (_shared.py).
+    allLocations: Annotated[  # noqa: N815 - upstream spelling
+        list[str], NullIsEmptyList
+    ] = Field(default_factory=list)
 
 
 class _LeverList(BaseModel):
@@ -99,10 +104,12 @@ class _LeverPosting(BaseModel):
     applyUrl: str | None = None  # noqa: N815 - upstream spelling
     createdAt: int | float | None = None  # noqa: N815 - upstream spelling
     workplaceType: str | None = None  # noqa: N815 - upstream spelling
-    categories: _LeverCategories = Field(default_factory=_LeverCategories)
+    categories: Annotated[_LeverCategories, NullIsEmptyModel] = Field(
+        default_factory=_LeverCategories
+    )
     description: str | None = None
     descriptionPlain: str | None = None  # noqa: N815 - upstream spelling
-    lists: list[_LeverList] = Field(default_factory=list)
+    lists: Annotated[list[_LeverList], NullIsEmptyList] = Field(default_factory=list)
     additional: str | None = None
     additionalPlain: str | None = None  # noqa: N815 - upstream spelling
 

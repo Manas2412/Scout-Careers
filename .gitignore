@@ -4,6 +4,9 @@
 !.env.example
 *.pem
 *.key
+# The Gmail OAuth token: encrypted at rest, and still never committed.
+*.token
+.secrets/
 
 # --- python ----------------------------------------------------------
 __pycache__/

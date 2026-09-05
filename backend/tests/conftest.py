@@ -38,6 +38,7 @@ def _no_network(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 
 BASE_ENV: dict[str, object] = {
+    "postgres_password": "test-password",
     "database_url": "postgresql+asyncpg://scout:scout@localhost:5432/scout",
     "redis_url": "redis://localhost:6379/0",
     "_env_file": None,

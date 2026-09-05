@@ -79,11 +79,19 @@ class ExistingPosting:
 
     Attributes:
         id: The stored ULID, reused rather than reallocated on an update.
-        content_hash: The stored hash, which is the whole of change detection.
+        content_hash: The stored hash, which is the whole of change detection
+            for the text.
+        company_id: Which company the row is currently filed under. Carried so
+            that a mail-alert lead sitting on the reserved ``unmatched`` row
+            re-attaches the moment its employer is added to the registry —
+            without it, promoting a company would leave every lead already
+            discovered for it stranded, and the operator would have to notice
+            that and fix it by hand.
     """
 
     id: str
     content_hash: str
+    company_id: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,20 +140,34 @@ def bound_description(text: str, limit: int) -> tuple[str, bool]:
     return bounded, len(bounded) != len(text)
 
 
-def classify(existing: ExistingPosting | None, fetched_hash: str) -> Change:
+def classify(
+    existing: ExistingPosting | None,
+    fetched_hash: str,
+    *,
+    company_id: int | None = None,
+) -> Change:
     """Classify one fetched posting against its stored counterpart.
 
     Args:
         existing: The stored row for this ``(source_id, external_id)``, if any.
         fetched_hash: The hash of the text just fetched.
+        company_id: Where this posting should now be filed. When it differs from
+            where the row is filed, the posting counts as ``UPDATED`` even
+            though its text is byte-identical: an unchanged posting takes the
+            cheap ``last_seen_at`` path, which rewrites no columns, so a
+            re-attachment expressed any other way would be silently dropped.
+            Omitted means "not being moved" — the case for every board adapter,
+            whose source is an employer and cannot change company.
 
     Returns:
-        ``NEW`` when the identity is unknown, ``UPDATED`` when the hash moved,
-        ``UNCHANGED`` when it did not.
+        ``NEW`` when the identity is unknown, ``UPDATED`` when the hash or the
+        company moved, ``UNCHANGED`` when neither did.
     """
     if existing is None:
         return Change.NEW
     if existing.content_hash != fetched_hash:
+        return Change.UPDATED
+    if company_id is not None and existing.company_id != company_id:
         return Change.UPDATED
     return Change.UNCHANGED
 
@@ -158,6 +180,8 @@ def plan_persist(
     existing: Mapping[str, ExistingPosting],
     now: datetime,
     max_description_chars: int,
+    company_overrides: Mapping[str, int] | None = None,
+    raw_extra: Mapping[str, Any] | None = None,
     id_factory: Callable[[], str] = new_ulid,
 ) -> PersistPlan:
     """Classify a source's postings and build the rows to write.
@@ -170,12 +194,22 @@ def plan_persist(
         postings: The adapter's output for this source, already normalised.
         source_id: The source these postings belong to.
         company_id: Its company, denormalised onto every posting so the dedup
-            key and the Companies page do not need a join.
+            key and the Companies page do not need a join. This is the right
+            answer for every board adapter, where the source *is* an employer.
         existing: Stored ``(external_id → ExistingPosting)`` for this source.
         now: The run's clock for this source. One value for the whole source, so
             ``last_seen_at`` is comparable across its postings and the close rule
             can key on it.
         max_description_chars: ``settings.max_description_chars``.
+        company_overrides: ``external_id → company_id`` for the one adapter
+            whose source is not an employer. A ``mail_alert`` digest carries
+            roles at many companies, and :mod:`~scout_careers.ingest.resolve`
+            has already decided which; a posting absent from this mapping keeps
+            ``company_id``. Resolution is not done here because it needs the
+            database and this function is pure.
+        raw_extra: Keys merged into every row's ``raw``, after the adapter's own
+            and before the truncation flags. Used to mark mail-sourced rows
+            ``needs_description``.
         id_factory: ULID generator; injectable for deterministic tests.
 
     Returns:
@@ -203,7 +237,12 @@ def plan_persist(
         )
         fetched_hash = content_hash(description_text)
         stored = existing.get(posting.external_id)
-        change = classify(stored, fetched_hash)
+        row_company_id = (
+            company_overrides.get(posting.external_id, company_id)
+            if company_overrides is not None
+            else company_id
+        )
+        change = classify(stored, fetched_hash, company_id=row_company_id)
 
         if change is Change.UNCHANGED and stored is not None:
             unchanged += 1
@@ -219,11 +258,12 @@ def plan_persist(
             _row(
                 posting,
                 source_id=source_id,
-                company_id=company_id,
+                company_id=row_company_id,
                 posting_id=stored.id if stored is not None else id_factory(),
                 description_text=description_text,
                 truncated=truncated,
                 fetched_hash=fetched_hash,
+                raw_extra=raw_extra,
                 now=now,
             )
         )
@@ -242,12 +282,15 @@ def _row(
     truncated: bool,
     fetched_hash: str,
     now: datetime,
+    raw_extra: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build one ``job_posting`` column dictionary."""
     # The adapter's ``raw`` is copied, never mutated: ``RawPosting`` is frozen
     # so that ``ingest/`` cannot edit an adapter's output in place, and a dict
     # field is the one hole in that guarantee.
     raw: dict[str, Any] = dict(posting.raw)
+    if raw_extra:
+        raw.update(raw_extra)
     if truncated:
         raw[TRUNCATION_FLAG] = True
         raw[TRUNCATION_ORIGINAL_CHARS] = len(posting.description_text)
@@ -284,7 +327,13 @@ def _row(
 #: role and recency ranking keys on it, so a recruiter's edit must not reset it.
 #: ``filtered_out`` and ``filter_reason`` are absent because they belong to
 #: ``ingest/dedup.py``: persisting a posting must not silently un-supersede it.
+#:
+#: ``company_id`` is present, and only ever moves for ``mail_alert``: for a board
+#: adapter the value is ``source.company_id`` on every run and rewriting it is a
+#: no-op. For an alert lead it is how a posting parked on the reserved
+#: ``unmatched`` row reaches its real employer once that employer is tracked.
 UPDATE_COLUMNS = (
+    "company_id",
     "title",
     "department",
     "location_raw",
@@ -326,13 +375,22 @@ async def load_existing(
     for start in range(0, len(external_ids), LOOKUP_CHUNK):
         chunk = external_ids[start : start + LOOKUP_CHUNK]
         rows = await session.execute(
-            select(JobPosting.external_id, JobPosting.id, JobPosting.content_hash).where(
+            select(
+                JobPosting.external_id,
+                JobPosting.id,
+                JobPosting.content_hash,
+                JobPosting.company_id,
+            ).where(
                 JobPosting.source_id == source_id,
                 JobPosting.external_id.in_(chunk),
             )
         )
-        for external_id, posting_id, stored_hash in rows.all():
-            found[external_id] = ExistingPosting(id=posting_id, content_hash=stored_hash)
+        for external_id, posting_id, stored_hash, stored_company_id in rows.all():
+            found[external_id] = ExistingPosting(
+                id=posting_id,
+                content_hash=stored_hash,
+                company_id=stored_company_id,
+            )
     return found
 
 
@@ -377,6 +435,8 @@ async def persist_postings(
     company_id: int,
     now: datetime,
     max_description_chars: int,
+    company_overrides: Mapping[str, int] | None = None,
+    raw_extra: Mapping[str, Any] | None = None,
 ) -> PersistCounts:
     """Persist one source's postings and report the change counts.
 
@@ -386,9 +446,12 @@ async def persist_postings(
             never persisted — a half-fetched board looks like "everything else
             closed" to the two-run rule (SOURCE_ADAPTERS.md §4.4).
         source_id: The source being persisted.
-        company_id: Its company.
+        company_id: Its company — correct for every board adapter.
         now: The clock value for this source's rows.
         max_description_chars: ``settings.max_description_chars``.
+        company_overrides: Per-posting company, for ``mail_alert`` only. See
+            :mod:`~scout_careers.ingest.resolve`.
+        raw_extra: Keys merged into every row's ``raw``.
 
     Returns:
         The ``new`` / ``updated`` / ``unchanged`` counts for the source result.
@@ -405,6 +468,8 @@ async def persist_postings(
         existing=existing,
         now=now,
         max_description_chars=max_description_chars,
+        company_overrides=company_overrides,
+        raw_extra=raw_extra,
     )
     await apply_plan(session, plan, now=now)
     return plan.counts

@@ -449,6 +449,9 @@ class RobotsPolicy:
         self._redis = redis
         self._fail_open_hosts = fail_open_hosts
         self._memo: dict[str, _RobotsEntry] = {}
+        #: One lock per origin, so concurrent sources on one host produce one
+        #: fetch rather than ``source_concurrency`` of them. See :meth:`check`.
+        self._loading: dict[str, asyncio.Lock] = {}
 
     @staticmethod
     def cache_key(origin: str) -> str:
@@ -474,8 +477,7 @@ class RobotsPolicy:
 
         entry = self._memo.get(origin)
         if entry is None:
-            entry = await self._load(origin)
-            self._memo[origin] = entry
+            entry = await self._load_once(origin)
 
         if entry.parser is None:
             if host in self._fail_open_hosts:
@@ -489,6 +491,37 @@ class RobotsPolicy:
             raise RobotsDenied(f"robots.txt disallows {host}{parsed.path}")
 
         return entry.crawl_delay_s
+
+    async def _load_once(self, origin: str) -> _RobotsEntry:
+        """Populate the memo for ``origin``, fetching at most once per run.
+
+        Args:
+            origin: ``scheme://host``.
+
+        Returns:
+            The cached entry.
+
+        The plain check-then-act this replaces was a race, and a live run showed
+        it: **eight** requests to ``boards-api.greenhouse.io/robots.txt`` in one
+        run, which is ``source_concurrency``, not the one this class documents.
+        Nineteen Greenhouse sources start together, all miss the empty memo, all
+        await ``_load``, and all fetch before any of them writes.
+
+        It only surfaces when the Redis cache is cold, so most runs hide it —
+        and it is worth fixing anyway, because robots.txt is the file we read to
+        be polite. Fetching it eight times is the opposite of the point.
+
+        The re-check inside the lock is the half that matters: seven waiters
+        wake up after the first has written, find the memo populated, and return
+        without a request.
+        """
+        lock = self._loading.setdefault(origin, asyncio.Lock())
+        async with lock:
+            entry = self._memo.get(origin)
+            if entry is None:
+                entry = await self._load(origin)
+                self._memo[origin] = entry
+            return entry
 
     async def _load(self, origin: str) -> _RobotsEntry:
         cached = await self._redis_get(origin)

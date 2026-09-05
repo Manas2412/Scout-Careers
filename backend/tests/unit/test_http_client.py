@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import httpx
@@ -629,3 +630,78 @@ def test_every_adapter_has_a_rate_limit_rule() -> None:
     for rule in RATE_LIMITS.values():
         assert rule.rate_per_s > 0
         assert rule.burst >= 1
+
+
+# --------------------------------------------------------------------------
+# robots.txt is read once per host per run
+#
+# `RobotsPolicy` documents "a 320-source run reads each host's robots.txt once".
+# A live run with a cold Redis cache read boards-api.greenhouse.io/robots.txt
+# EIGHT times — `source_concurrency`, not one. Nineteen Greenhouse sources start
+# together, all miss the empty memo, all await the fetch, and all issue it
+# before any of them writes. Harmless in bytes, wrong in kind: robots.txt is the
+# file we read in order to be polite.
+# --------------------------------------------------------------------------
+
+
+@respx.mock
+async def test_concurrent_sources_on_one_host_fetch_robots_once(settings) -> None:
+    route = respx.get(f"{GREENHOUSE}/robots.txt").mock(
+        return_value=httpx.Response(200, text=ROBOTS_ALLOW_ALL)
+    )
+
+    async with httpx.AsyncClient() as http:
+        policy = RobotsPolicy(http, user_agent=settings.source_user_agent, cache_ttl_s=60)
+        # Concurrent, not sequential: sequential passes with or without the
+        # lock, so it would prove nothing about the bug.
+        await asyncio.gather(
+            *(policy.check(f"{GREENHOUSE}/v1/boards/board-{n}/jobs") for n in range(8))
+        )
+
+    assert route.call_count == 1
+
+
+@respx.mock
+async def test_a_second_host_is_not_blocked_by_the_first(settings) -> None:
+    """The lock is per origin. One slow host must not serialise the whole run."""
+    greenhouse = respx.get(f"{GREENHOUSE}/robots.txt").mock(
+        return_value=httpx.Response(200, text=ROBOTS_ALLOW_ALL)
+    )
+    other = respx.get("https://api.lever.co/robots.txt").mock(
+        return_value=httpx.Response(200, text=ROBOTS_ALLOW_ALL)
+    )
+
+    async with httpx.AsyncClient() as http:
+        policy = RobotsPolicy(http, user_agent=settings.source_user_agent, cache_ttl_s=60)
+        await asyncio.gather(
+            policy.check(f"{GREENHOUSE}/v1/boards/a/jobs"),
+            policy.check("https://api.lever.co/v0/postings/b"),
+            policy.check(f"{GREENHOUSE}/v1/boards/c/jobs"),
+            policy.check("https://api.lever.co/v0/postings/d"),
+        )
+
+    assert greenhouse.call_count == 1
+    assert other.call_count == 1
+
+
+@respx.mock
+async def test_a_denial_is_still_raised_for_every_waiter(settings) -> None:
+    """One fetch, but all eight callers must still be refused.
+
+    Deduplicating the fetch must not deduplicate the *decision* — a waiter that
+    got no answer because someone else asked would be a source silently allowed
+    past robots.
+    """
+    respx.get(f"{GREENHOUSE}/robots.txt").mock(
+        return_value=httpx.Response(200, text="User-agent: *\nDisallow: /")
+    )
+
+    async with httpx.AsyncClient() as http:
+        policy = RobotsPolicy(http, user_agent=settings.source_user_agent, cache_ttl_s=60)
+        results = await asyncio.gather(
+            *(policy.check(f"{GREENHOUSE}/v1/boards/board-{n}/jobs") for n in range(8)),
+            return_exceptions=True,
+        )
+
+    assert len(results) == 8
+    assert all(isinstance(r, RobotsDenied) for r in results)

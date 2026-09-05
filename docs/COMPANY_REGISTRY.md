@@ -1032,7 +1032,59 @@ for exactly this reason. A soft-deleted company's slug remains taken, which also
 prevents a later CSV import from recreating it as a fresh row and losing the
 association.
 
-### 11.3 Routine registry hygiene
+### 11.3 Retiring a moved board from the CLI
+
+§11.1 is the procedure; this is the command that carries out step 4. It exists
+because re-seeding does **not** fix a moved board: `seed companies` is idempotent
+on `(company_id, adapter, config)`, so editing the token in
+`seeds/companies.yaml` and re-running it inserts a *second* source and leaves the
+dead one polling until `consecutive_failures` reaches five.
+
+```bash
+scout-careers source list --company anysphere   # find the id and the token
+scout-careers source show 12                    # the full config and last_error
+scout-careers company add https://jobs.ashbyhq.com/cursor   # the new board
+scout-careers source retire 12                  # the old one, out of service
+```
+
+**`retire` is the default answer, and `rm` almost never is.**
+
+| | `source retire <id>` | `source rm <id>` |
+|---|---|---|
+| Effect | `enabled = false`, `last_status = 'retired'` | row deleted |
+| Postings | **kept**, with their `first_seen_at` history | **destroyed**, by `ON DELETE CASCADE` (§11.2) |
+| Reversible | yes — `source enable <id>` | no |
+| Use when | the board moved, was retired, or is otherwise finished | the source was mistyped and never successfully ran |
+
+`retire` is deliberately distinct from the `disabled` and `auto_disabled`
+statuses: `disabled` means paused and expected back, `auto_disabled` means the
+five-failure threshold fired without anybody looking, and `retired` means a human
+looked and decided the board is gone. It clears `consecutive_failures` — that
+counter exists only to drive the auto-disable threshold, and a retired source
+will not run again, so leaving it set would keep a decided board in the **Needs
+attention** filter (§7.2) forever. It keeps `last_error`, which in six months is
+the only record of *why* the board was retired.
+
+`rm` is the only destructive command in the CLI. It prints the exact number of
+`job_posting` rows the cascade will destroy, names `retire` as the alternative,
+and requires a typed confirmation; `--yes` is the only way past that prompt, and
+an unanswered prompt aborts. Note that this is a **looser** guard than the API's:
+`DELETE /api/v1/sources/{id}` refuses outright with 409 `source.has_postings`
+(§11.2). The difference is deliberate and is about who is at the other end — an
+HTTP client cannot be shown a number and asked, an operator at a terminal can,
+and refusing them outright is what sends them to `psql`, which has no guard at
+all.
+
+`source test <id>` re-probes the board with the same one-request probe detection
+uses, honouring the never-scrape list (§2.4): a denied host is reported as a
+refusal and no request is made. Unlike the Companies page's **Re-test** button
+(§7.5) the CLI's `test` is **read-only** — it does not clear
+`consecutive_failures` and does not re-enable anything, so that testing a source
+you have just retired cannot quietly put it back into the nightly run.
+`source enable <id>` is the command that re-enables and clears the counter, and
+it is the human act `SOURCE_ADAPTERS.md` §4.8 requires.
+
+### 11.4 Routine registry hygiene
 
 A short list, because a registry that is never reviewed silently decays into a
 list of dead boards:

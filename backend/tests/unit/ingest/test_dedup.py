@@ -34,19 +34,35 @@ def candidate(
     city: str | None = "Bengaluru",
     first_seen_at: datetime = EARLY,
     company_id: int = 1,
+    source_id: int | None = None,
+    content_hash: str = "hash-a",
     filtered_out: bool = False,
     filter_reason: str | None = None,
 ) -> DedupCandidate:
+    """Build a candidate.
+
+    ``source_id`` defaults to one derived from the adapter, so the cross-source
+    tests below — which distinguish their records by adapter — keep meaning what
+    they meant before ``same_role`` existed: two adapters are two sources. Tests
+    about *one* source pass it explicitly.
+    """
     return DedupCandidate(
         id=posting_id,
         company_id=company_id,
         title=title,
         location_city=city,
         adapter=adapter,
+        source_id=source_id if source_id is not None else _source_for(adapter),
+        content_hash=content_hash,
         first_seen_at=first_seen_at,
         filtered_out=filtered_out,
         filter_reason=filter_reason,
     )
+
+
+def _source_for(adapter: AtsType) -> int:
+    """One stable source id per adapter."""
+    return 100 + sorted(AtsType).index(adapter)
 
 
 # --------------------------------------------------------------------------
@@ -259,3 +275,112 @@ async def test_losers_are_marked_not_deleted() -> None:
 
     assert all(isinstance(stmt, Update) for stmt in session.statements)
     assert not any("DELETE" in str(stmt).upper() for stmt in session.statements)
+
+
+# --------------------------------------------------------------------------
+# One source is not two sources
+#
+# The first live registry collapsed 722 records. 685 of them had different
+# description text — three separate "Software Engineer" openings in one city at
+# one employer, read as one posting and two hidden. Nine per cent of everything
+# held. These are the tests that would have caught it.
+# --------------------------------------------------------------------------
+
+BOARD = 7
+
+
+def test_two_openings_with_one_title_at_one_employer_both_survive() -> None:
+    plan = plan_collapse(
+        [
+            candidate("01A", adapter=AtsType.GREENHOUSE, source_id=BOARD, content_hash="role-a"),
+            candidate("01B", adapter=AtsType.GREENHOUSE, source_id=BOARD, content_hash="role-b"),
+            candidate("01C", adapter=AtsType.GREENHOUSE, source_id=BOARD, content_hash="role-c"),
+        ]
+    )
+    assert plan.supersede == {}
+
+
+def test_one_role_listed_twice_on_one_board_still_collapses() -> None:
+    """Greenhouse does list a job twice under two offices. Same text, one role."""
+    plan = plan_collapse(
+        [
+            candidate("01A", adapter=AtsType.GREENHOUSE, source_id=BOARD, content_hash="same"),
+            candidate("01B", adapter=AtsType.GREENHOUSE, source_id=BOARD, content_hash="same"),
+        ]
+    )
+    assert plan.supersede == {"01B": "01A"}
+
+
+def test_across_sources_the_text_is_not_compared() -> None:
+    """Two ATSs render the same role differently, so the hashes never match.
+
+    Scoping the hash check to one source is the whole point: applied everywhere
+    it would disable cross-source dedup entirely, which is the feature.
+    """
+    plan = plan_collapse(
+        [
+            candidate("01A", adapter=AtsType.GREENHOUSE, content_hash="greenhouse-text"),
+            candidate("01B", adapter=AtsType.MAIL_ALERT, content_hash="alert-stub"),
+        ]
+    )
+    assert plan.supersede == {"01B": "01A"}
+
+
+def test_a_distinct_opening_wrongly_collapsed_before_is_released() -> None:
+    """Tightening the rule has to heal the rows the loose rule already marked.
+
+    685 postings are sitting in the database flagged `superseded_by:`. They are
+    found by the same pass that stopped creating them — no migration, no
+    one-off script — because a record that is no longer superseded by anything
+    is exactly what `restore` is for.
+    """
+    plan = plan_collapse(
+        [
+            candidate("01A", adapter=AtsType.GREENHOUSE, source_id=BOARD, content_hash="role-a"),
+            candidate(
+                "01B",
+                adapter=AtsType.GREENHOUSE,
+                source_id=BOARD,
+                content_hash="role-b",
+                filtered_out=True,
+                filter_reason=f"{SUPERSEDED_PREFIX}01A",
+            ),
+        ]
+    )
+    assert plan.supersede == {}
+    assert plan.restore == ("01B",)
+
+
+def test_a_row_filtered_for_some_other_reason_is_left_alone() -> None:
+    """`restore` clears supersession flags. It is not a general un-filter."""
+    plan = plan_collapse(
+        [
+            candidate("01A", adapter=AtsType.GREENHOUSE, source_id=BOARD, content_hash="role-a"),
+            candidate(
+                "01B",
+                adapter=AtsType.GREENHOUSE,
+                source_id=BOARD,
+                content_hash="role-b",
+                filtered_out=True,
+                filter_reason="location_filter",
+            ),
+        ]
+    )
+    assert plan.restore == ()
+    assert plan.supersede == {}
+
+
+def test_the_winner_of_a_mixed_group_takes_only_what_it_should() -> None:
+    """One board with two real openings, plus an alert naming one of them.
+
+    The alert stub collapses into the best board record; the board's *other*
+    opening is untouched.
+    """
+    plan = plan_collapse(
+        [
+            candidate("01A", adapter=AtsType.GREENHOUSE, source_id=BOARD, content_hash="role-a"),
+            candidate("01B", adapter=AtsType.GREENHOUSE, source_id=BOARD, content_hash="role-b"),
+            candidate("01C", adapter=AtsType.MAIL_ALERT, content_hash="stub"),
+        ]
+    )
+    assert plan.supersede == {"01C": "01A"}

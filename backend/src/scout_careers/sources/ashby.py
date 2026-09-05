@@ -37,6 +37,9 @@ from scout_careers.common.errors import AdapterConfigError, ScoutError, Upstream
 from scout_careers.common.logging import get_logger
 from scout_careers.common.types import AtsType
 from scout_careers.sources._shared import (
+    NullIsEmptyList,
+    NullIsFalse,
+    NullIsTrue,
     bound_description,
     company_guess,
     config_error,
@@ -82,12 +85,15 @@ class _AshbyJob(BaseModel):
     team: str | None = None
     employmentType: str | None = None  # noqa: N815 - upstream spelling
     location: str | None = None
-    secondaryLocations: list[_AshbySecondaryLocation] = Field(  # noqa: N815 - upstream spelling
-        default_factory=list
-    )
+    # Defaulted fields tolerate an explicit null: Ashby sends `isRemote: null`
+    # where the recruiter left it unset, and `secondaryLocations: null` on
+    # single-location postings (_shared.py).
+    secondaryLocations: Annotated[  # noqa: N815 - upstream spelling
+        list[_AshbySecondaryLocation], NullIsEmptyList
+    ] = Field(default_factory=list)
     publishedAt: str | None = None  # noqa: N815 - upstream spelling
-    isListed: bool = True  # noqa: N815 - upstream spelling
-    isRemote: bool = False  # noqa: N815 - upstream spelling
+    isListed: Annotated[bool, NullIsTrue] = True  # noqa: N815 - upstream spelling
+    isRemote: Annotated[bool, NullIsFalse] = False  # noqa: N815 - upstream spelling
     descriptionHtml: str | None = None  # noqa: N815 - upstream spelling
     descriptionPlain: str | None = None  # noqa: N815 - upstream spelling
     compensation: dict[str, Any] | None = None

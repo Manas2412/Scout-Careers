@@ -503,6 +503,44 @@ async def test_no_denied_host_is_ever_requested_during_a_fetch() -> None:
         assert posting.raw["canonical_url_source"] == "tracking_url_retained"
 
 
+@respx.mock
+async def test_a_real_gmail_reader_still_issues_no_http_request_to_any_host() -> None:
+    """The same invariant, with the production reader rather than a stub.
+
+    ``FakeMailReader`` above proves the adapter issues no request. This proves
+    the thing that will actually be wired into it in operation does not either:
+    a ``GmailClient`` over recorded Gmail documents, fed a real LinkedIn digest,
+    producing real postings. respx is registered with no routes at all, and the
+    repository conftest blocks sockets underneath it, so any host contacted by
+    any layer — the reader, the parser, the URL unwrapper — fails this test.
+
+    It lives here, beside the stub version, rather than in a parallel file:
+    "no denied host is ever requested" is one invariant, and an invariant with
+    two homes drifts.
+    """
+    from scout_careers.mail.gmail import GmailClient
+    from tests.unit.mail.conftest import LINKEDIN_ID, FakeGmailTransport, message_resource
+
+    transport = FakeGmailTransport({LINKEDIN_ID: message_resource(received_at=RECEIVED)})
+    reader = GmailClient(transport=transport, max_messages=10)
+    adapter = MailAlertAdapter(
+        source_id=41,
+        config=MailAlertConfig(senders=["jobalerts-noreply@linkedin.com"]),
+        mail=reader,
+    )
+
+    postings = [posting async for posting in adapter.fetch(since=RECEIVED - timedelta(hours=26))]
+
+    assert postings, "the recorded digest must still yield leads"
+    assert list(respx.calls) == [], "not one HTTP request, to any host"
+    assert transport.fetched == [LINKEDIN_ID]
+
+    denied = [p for p in postings if is_denied_host(str(p.url).split("/")[2])]
+    assert denied, "the fixture retains at least one LinkedIn URL, stored and never followed"
+    for posting in denied:
+        assert posting.raw["canonical_url_source"] == "tracking_url_retained"
+
+
 def test_the_adapter_holds_no_http_capability() -> None:
     adapter = build_adapter(FakeMailReader([]))
     assert not hasattr(adapter, "_http")

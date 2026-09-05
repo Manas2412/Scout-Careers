@@ -23,6 +23,14 @@ uniqueness only works if the same board always serialises the same way. So
 configs are written as ``model_dump(mode="json", exclude_defaults=False)`` with
 sorted keys: defaults are materialised rather than omitted, so a config saved
 before a default changed still collides with one saved after.
+
+That uniqueness is also why this module owns *retiring* a source. Changing a
+board token in ``seeds/companies.yaml`` and re-seeding does not edit the old row;
+it inserts a second one, and the dead one keeps failing nightly until the
+five-failure threshold disables it. :func:`retire_source` is the intended
+remedy and :func:`delete_source` is deliberately not — deleting a source
+cascades to every posting ever discovered through it (DATA_MODEL.md §4.1), which
+is history nothing can reconstruct.
 """
 
 from __future__ import annotations
@@ -37,15 +45,15 @@ from typing import Any, ClassVar, Final
 import httpx
 from pydantic import BaseModel, ConfigDict, ValidationError
 from redis.asyncio import Redis
-from sqlalchemy import select, update
+from sqlalchemy import Select, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from scout_careers.common.clock import utcnow
 from scout_careers.common.config import Settings, get_settings
-from scout_careers.common.errors import ScoutError
-from scout_careers.common.logging import get_logger
+from scout_careers.common.errors import AdapterConfigError, ScoutError
+from scout_careers.common.logging import REDACT_KEY_RE, REDACTED, get_logger
 from scout_careers.common.types import AtsType, CompanyStatus, CompanyTier
-from scout_careers.db.models import Company, Source
+from scout_careers.db.models import Company, JobPosting, Source
 from scout_careers.sources.base import AshbyConfig, GreenhouseConfig, LeverConfig, ProbeResult
 from scout_careers.sources.http import (
     STATIC_BUCKET_KEYS,
@@ -56,6 +64,7 @@ from scout_careers.sources.http import (
     RobotsPolicy,
     SourceHttpClient,
     build_client,
+    build_source_client,
 )
 from scout_careers.sources.policy import assert_fetch_allowed
 from scout_careers.sources.registry import get_adapter
@@ -92,6 +101,24 @@ class DuplicateSource(RegistryError):
     """This company already has a source with this adapter and config."""
 
     error_code: ClassVar[str] = "source.duplicate"
+
+
+class SourceNotFound(RegistryError):
+    """No source with that id."""
+
+    error_code: ClassVar[str] = "source.not_found"
+
+
+class SourceNotProbeable(RegistryError):
+    """This source has no board URL, so there is nothing to re-probe.
+
+    ``mail_alert`` is the Phase 1 case: it reads the alerts mailbox and issues no
+    HTTP request at all. Raised rather than probed, because a probe whose target
+    URL cannot be derived is a probe the never-scrape gate cannot check, and an
+    unchecked fetch is the one thing this module will not do.
+    """
+
+    error_code: ClassVar[str] = "source.not_probeable"
 
 
 # ---------------------------------------------------------------------------
@@ -571,13 +598,126 @@ async def set_company_status(
 # ---------------------------------------------------------------------------
 
 
-async def list_sources(session: AsyncSession, *, company_id: int | None = None) -> list[Source]:
-    """List sources, optionally for one company, ordered by id."""
+def sources_query(
+    *,
+    company_id: int | None = None,
+    adapter: AtsType | None = None,
+    last_status: str | None = None,
+    failing: bool = False,
+    enabled: bool | None = None,
+) -> Select[tuple[Source]]:
+    """Build the filtered ``source`` select the list views read.
+
+    Split out from :func:`list_sources` so the filter itself is testable without
+    a database: the statement is the thing that can be wrong, and compiling it is
+    cheaper than standing up Postgres to find out.
+
+    Args:
+        company_id: Restrict to one company.
+        adapter: Restrict to one adapter type.
+        last_status: Restrict to one ``source.last_status`` value. Free text
+            rather than an enum because the status vocabulary lives in a TEXT
+            column and grows without a migration (``common/types.py``).
+        failing: Only sources with at least one consecutive failure.
+        enabled: Only enabled, or only disabled, sources.
+
+    Returns:
+        A ``Select`` over :class:`~scout_careers.db.models.Source`, ordered by id.
+    """
     stmt = select(Source).order_by(Source.id)
     if company_id is not None:
         stmt = stmt.where(Source.company_id == company_id)
-    result = await session.execute(stmt)
+    if adapter is not None:
+        stmt = stmt.where(Source.adapter == adapter)
+    if last_status is not None:
+        stmt = stmt.where(Source.last_status == last_status)
+    if failing:
+        stmt = stmt.where(Source.consecutive_failures > 0)
+    if enabled is not None:
+        stmt = stmt.where(Source.enabled.is_(enabled))
+    return stmt
+
+
+async def list_sources(
+    session: AsyncSession,
+    *,
+    company_id: int | None = None,
+    adapter: AtsType | None = None,
+    last_status: str | None = None,
+    failing: bool = False,
+    enabled: bool | None = None,
+) -> list[Source]:
+    """List sources, filtered as :func:`sources_query` describes, ordered by id."""
+    result = await session.execute(
+        sources_query(
+            company_id=company_id,
+            adapter=adapter,
+            last_status=last_status,
+            failing=failing,
+            enabled=enabled,
+        )
+    )
     return list(result.scalars().all())
+
+
+async def get_source(session: AsyncSession, source_id: int) -> Source | None:
+    """Return one source by id, or ``None``."""
+    return await session.get(Source, source_id)
+
+
+async def require_source(session: AsyncSession, source_id: int) -> Source:
+    """Return one source by id.
+
+    Args:
+        session: An open session.
+        source_id: The source.
+
+    Returns:
+        The source row.
+
+    Raises:
+        SourceNotFound: When there is no such source.
+    """
+    source = await session.get(Source, source_id)
+    if source is None:
+        raise SourceNotFound(f"source {source_id} does not exist")
+    return source
+
+
+async def resolve_company(session: AsyncSession, reference: str) -> Company:
+    """Resolve a company by slug, or by id when the reference is all digits.
+
+    Args:
+        session: An open session.
+        reference: A slug (``anysphere``) or an id (``42``).
+
+    Returns:
+        The company.
+
+    Raises:
+        RegistryError: When nothing matches.
+    """
+    company = (
+        await get_company(session, int(reference))
+        if reference.isdigit()
+        else await get_company_by_slug(session, reference)
+    )
+    if company is None:
+        raise RegistryError(f"no company {reference!r}; try `scout-careers company list`")
+    return company
+
+
+async def companies_by_id(session: AsyncSession, ids: Sequence[int]) -> dict[int, Company]:
+    """Load the companies named by ``ids``, keyed by id.
+
+    Soft-deleted companies are included: their sources still exist and still
+    appear in a source listing, and hiding the owner's name would make the row
+    unreadable rather than tidy.
+    """
+    if not ids:
+        return {}
+    result = await session.execute(select(Company).where(Company.id.in_(sorted(set(ids)))))
+    return {company.id: company for company in result.scalars().all()}
 
 
 async def find_source(
@@ -690,6 +830,362 @@ async def set_source_enabled(session: AsyncSession, source_id: int, enabled: boo
     return source
 
 
+# ---------------------------------------------------------------------------
+# Retiring, deleting and re-probing a source (COMPANY_REGISTRY.md §11.1–§11.2)
+# ---------------------------------------------------------------------------
+
+
+#: ``source.last_status`` for a board the operator retired by hand. Distinct
+#: from ``disabled`` (paused, expected back) and from ``auto_disabled`` (the
+#: five-failure threshold fired): ``retired`` says a human looked at it and
+#: decided this board is gone for good, which is the state a moved board ends up
+#: in and the state the digest should stop nagging about.
+RETIRED_STATUS: Final[str] = "retired"
+
+#: Config keys that name the board rather than describe how to read it. These
+#: are public identifiers — the token in the URL an employer publishes — so they
+#: are shown in full even when :data:`REDACT_KEY_RE` matches the key name, which
+#: it does for ``board_token``.
+IDENTITY_KEYS: Final[tuple[str, ...]] = (
+    "board_token",
+    "site",
+    "board_name",
+    "company_id",
+    "account",
+    "company",
+    "host",
+    "tenant",
+    "label",
+)
+
+
+def config_identity(config: Mapping[str, Any]) -> str | None:
+    """Return the one config value that identifies the board.
+
+    Args:
+        config: A stored ``source.config``.
+
+    Returns:
+        ``"board_token=stripe"``, or ``None`` when the config carries no key
+        from :data:`IDENTITY_KEYS`. The whole JSONB is deliberately not
+        summarised: a list row wants the value that moved, not the settings.
+    """
+    for key in IDENTITY_KEYS:
+        value = config.get(key)
+        if value is not None and value != "":
+            return f"{key}={value}"
+    return None
+
+
+def redact_config(config: Mapping[str, Any]) -> dict[str, Any]:
+    """Return a config safe to print in full.
+
+    No Phase 1 adapter puts a credential in ``source.config`` — every one of them
+    reads a public endpoint. This does not assume that stays true: any key whose
+    *name* looks credential-shaped (the same pattern the log scrubber uses) has
+    its value masked, and only the public board identifiers of
+    :data:`IDENTITY_KEYS` are exempt.
+
+    Args:
+        config: A stored ``source.config``.
+
+    Returns:
+        The config with sensitive values masked, key-sorted.
+    """
+    return {
+        key: (config[key] if key in IDENTITY_KEYS or not REDACT_KEY_RE.search(key) else REDACTED)
+        for key in sorted(config)
+    }
+
+
+def source_probe_url(adapter: AtsType, config: Mapping[str, Any]) -> str | None:
+    """Return the URL a probe of this source would request.
+
+    Derived from the adapter's own ``URL_TEMPLATE`` so there is one definition of
+    where an adapter points, and the policy gate checks the same string the
+    adapter will later build.
+
+    Args:
+        adapter: The adapter type.
+        config: The stored config.
+
+    Returns:
+        An absolute ``https`` URL, or ``None`` when this adapter fetches no board
+        — ``mail_alert`` reads a mailbox, ``manual`` has no adapter at all.
+    """
+    try:
+        adapter_cls = get_adapter(adapter)
+    except AdapterConfigError:
+        return None
+    template = getattr(adapter_cls, "URL_TEMPLATE", None)
+    if not isinstance(template, str):
+        return None
+    try:
+        return f"https://{template.format(**dict(config))}"
+    except (KeyError, IndexError):
+        return None
+
+
+@dataclass(frozen=True, slots=True)
+class SourceDeletion:
+    """What a :func:`delete_source` destroyed.
+
+    Attributes:
+        source_id: The source that is gone.
+        company_id: The company it belonged to.
+        adapter: Its adapter type.
+        postings_deleted: How many ``job_posting`` rows the ``ON DELETE CASCADE``
+            took with it (DATA_MODEL.md §4.1) — open, closed and filtered alike.
+    """
+
+    source_id: int
+    company_id: int
+    adapter: AtsType
+    postings_deleted: int
+
+
+@dataclass(frozen=True, slots=True)
+class SourceProbe:
+    """One re-probe of an existing source.
+
+    Attributes:
+        source_id: The source probed.
+        adapter: Its adapter type.
+        describe: The adapter's short human string.
+        url: The URL the probe requested.
+        probe: The adapter's own result, verbatim.
+    """
+
+    source_id: int
+    adapter: AtsType
+    describe: str
+    url: str
+    probe: ProbeResult
+
+
+async def count_source_postings(session: AsyncSession, source_id: int) -> int:
+    """Count every posting row a delete of this source would destroy.
+
+    Deliberately not restricted to open postings: the cascade takes closed and
+    filtered rows too, and the whole point of showing the number before a delete
+    is that it is the real one.
+
+    Args:
+        session: An open session.
+        source_id: The source.
+
+    Returns:
+        The row count.
+    """
+    total = await session.scalar(
+        select(func.count()).select_from(JobPosting).where(JobPosting.source_id == source_id)
+    )
+    return int(total or 0)
+
+
+async def open_posting_counts(
+    session: AsyncSession, source_ids: Sequence[int] | None = None
+) -> dict[int, int]:
+    """Count open, filtered-in postings per source.
+
+    Args:
+        session: An open session.
+        source_ids: Restrict to these sources; every source when omitted.
+
+    Returns:
+        ``{source_id: count}``, with sources that have none simply absent.
+    """
+    if source_ids is not None and not source_ids:
+        return {}
+    stmt = (
+        select(JobPosting.source_id, func.count())
+        .where(JobPosting.closed_at.is_(None), JobPosting.filtered_out.is_(False))
+        .group_by(JobPosting.source_id)
+    )
+    if source_ids is not None:
+        stmt = stmt.where(JobPosting.source_id.in_(sorted(set(source_ids))))
+    result = await session.execute(stmt)
+    return {int(source_id): int(count) for source_id, count in result.all()}
+
+
+async def retire_source(session: AsyncSession, source_id: int) -> Source:
+    """Take a source out of service without destroying anything.
+
+    The answer to a board that moved (COMPANY_REGISTRY.md §11.1 step 4). The
+    source stops polling, its postings and their ``first_seen_at`` history
+    survive, and the roles that genuinely moved collapse against the new board's
+    rows by the cross-source dedup key. Nothing is lost, and it is reversible
+    with ``source enable``.
+
+    ``consecutive_failures`` is cleared because that counter exists only to drive
+    the auto-disable threshold, and a retired source will not run again — leaving
+    it set would keep a decided board in the "needs attention" list forever.
+    ``last_error`` is kept: it is the record of *why* the board was retired, and
+    six months later it is the only one.
+
+    Args:
+        session: An open session. The caller owns the transaction.
+        source_id: The source to retire.
+
+    Returns:
+        The updated source.
+
+    Raises:
+        SourceNotFound: When the source does not exist.
+    """
+    source = await require_source(session, source_id)
+    source.enabled = False
+    source.last_status = RETIRED_STATUS
+    source.consecutive_failures = 0
+    await session.flush()
+    log.info(
+        "source_retired",
+        source_id=source.id,
+        company_id=source.company_id,
+        adapter=source.adapter.value,
+    )
+    return source
+
+
+async def delete_source(session: AsyncSession, source_id: int) -> SourceDeletion:
+    """Delete a source and, by cascade, every posting ever seen through it.
+
+    ``job_posting.source_id`` is ``ON DELETE CASCADE`` (DATA_MODEL.md §4.1), so
+    this destroys discovery history that nothing can reconstruct.
+    :func:`retire_source` is the right call for a board that moved; this is for
+    the mistyped config that never successfully ran.
+
+    The count is taken inside the caller's transaction, so the number reported is
+    the number destroyed rather than a number read a moment earlier.
+
+    Args:
+        session: An open session. The caller owns the transaction.
+        source_id: The source to delete.
+
+    Returns:
+        What was destroyed.
+
+    Raises:
+        SourceNotFound: When the source does not exist.
+    """
+    source = await require_source(session, source_id)
+    postings = await count_source_postings(session, source_id)
+    deletion = SourceDeletion(
+        source_id=source.id,
+        company_id=source.company_id,
+        adapter=source.adapter,
+        postings_deleted=postings,
+    )
+    await session.delete(source)
+    await session.flush()
+    log.warning(
+        "source_deleted",
+        source_id=deletion.source_id,
+        company_id=deletion.company_id,
+        adapter=deletion.adapter.value,
+        postings_deleted=deletion.postings_deleted,
+    )
+    return deletion
+
+
+async def probe_source(
+    session: AsyncSession,
+    source_id: int,
+    *,
+    settings: Settings | None = None,
+    redis: Redis | None = None,
+) -> SourceProbe:
+    """Re-probe an existing source with the adapter that reads it.
+
+    The same one-request probe detection runs (§2.3), against the config already
+    stored. The order matches :func:`detect_ats` and matters for the same reason:
+    the config is validated, the target URL is derived, and the never-fetch gate
+    runs on that URL **before** an HTTP client exists. A denied host is refused
+    without a request having been made.
+
+    This is read-only. It does not clear ``consecutive_failures`` and does not
+    re-enable anything: re-enabling is its own command, so that testing a source
+    the operator deliberately retired cannot silently put it back into the
+    nightly run.
+
+    Args:
+        session: An open session, used only to load the source.
+        source_id: The source to probe.
+        settings: Configuration; resolved from the environment when omitted.
+        redis: Redis, for the shared token bucket and the robots cache. Without
+            it the probe still honours robots.txt and still refuses never-fetch
+            hosts; it simply does not share a bucket with a concurrent run, which
+            is the same trade :func:`detect_for_url` makes for one request.
+
+    Returns:
+        The probe result and what was probed.
+
+    Raises:
+        SourceNotFound: When the source does not exist.
+        SourceNotProbeable: When this adapter fetches no board URL.
+        AdapterConfigError: When the stored config no longer validates.
+        DeniedByPolicy: When the derived URL is on the never-fetch list. No
+            request is made, and this is not overridable.
+    """
+    source = await require_source(session, source_id)
+    adapter_cls = get_adapter(source.adapter)
+    config = adapter_cls.parse_config(dict(source.config or {}))
+
+    url = source_probe_url(source.adapter, source.config or {})
+    if url is None:
+        raise SourceNotProbeable(
+            f"source {source_id} is a {source.adapter.value} source, which fetches no board URL; "
+            "there is nothing to re-probe"
+        )
+    assert_fetch_allowed(url)
+
+    resolved = settings or get_settings()
+    client = build_client(resolved)
+    try:
+        robots = RobotsPolicy(
+            client,
+            user_agent=resolved.source_user_agent,
+            cache_ttl_s=resolved.robots_cache_ttl_s,
+            timeout_s=resolved.source_probe_timeout_s,
+            redis=redis,
+        )
+        limiter: RateLimiter = RedisTokenBucket(redis) if redis is not None else NullRateLimiter()
+        http = build_source_client(
+            client,
+            settings=resolved,
+            source_id=source.id,
+            adapter=source.adapter,
+            bucket_key=STATIC_BUCKET_KEYS.get(source.adapter) or httpx.URL(url).host,
+            limiter=limiter,
+            robots=robots,
+            breaker=InRunCircuitBreaker(threshold=resolved.circuit_breaker_failures),
+        )
+        adapter = adapter_cls(source_id=source.id, config=config, http=http)
+        try:
+            result = await adapter.probe()
+            describe = adapter.describe()
+        finally:
+            await adapter.aclose()
+    finally:
+        await client.aclose()
+
+    log.info(
+        "source_probed",
+        source_id=source.id,
+        adapter=source.adapter.value,
+        host=httpx.URL(url).host,
+        reachable=result.reachable,
+        http_status=result.http_status,
+    )
+    return SourceProbe(
+        source_id=source.id,
+        adapter=source.adapter,
+        describe=describe,
+        url=url,
+        probe=result,
+    )
+
+
 async def touch_company_seen(session: AsyncSession, company_id: int) -> None:
     """Record that a company was reviewed, without changing anything else."""
     await session.execute(
@@ -699,29 +1195,48 @@ async def touch_company_seen(session: AsyncSession, company_id: int) -> None:
 
 __all__ = [
     "CONFIG_MODELS",
+    "IDENTITY_KEYS",
     "PATTERNS",
+    "RETIRED_STATUS",
     "TAG_AXES",
     "DetectionResult",
     "DuplicateSource",
     "PatternMatch",
     "RegistryError",
+    "SourceDeletion",
+    "SourceNotFound",
+    "SourceNotProbeable",
+    "SourceProbe",
     "TagInvalid",
     "Undetectable",
     "canonical_config",
+    "companies_by_id",
+    "config_identity",
+    "count_source_postings",
     "create_company",
     "create_source",
+    "delete_source",
     "detect_ats",
     "detect_for_url",
     "find_source",
     "get_company",
     "get_company_by_slug",
+    "get_source",
     "list_companies",
     "list_sources",
     "match_url",
     "normalise_url",
+    "open_posting_counts",
+    "probe_source",
+    "redact_config",
+    "require_source",
+    "resolve_company",
+    "retire_source",
     "set_company_status",
     "set_source_enabled",
     "slugify",
+    "source_probe_url",
+    "sources_query",
     "touch_company_seen",
     "validate_tags",
 ]

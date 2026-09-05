@@ -1,8 +1,9 @@
 """The ``scout-careers`` entry point.
 
-One Typer app, five groups: ``db``, ``company``, ``seed``, ``run`` and ``runs``.
-Nothing here holds logic — each group's module does — so that adding a command
-never means editing the place the entry point is declared.
+One Typer app, eight groups: ``db``, ``company``, ``source``, ``seed``, ``run``,
+``runs``, ``scheduler`` and ``auth``. Nothing here holds logic — each group's
+module does — so that adding a command never means editing the place the entry
+point is declared.
 """
 
 from __future__ import annotations
@@ -14,9 +15,12 @@ import typer
 from alembic import command as alembic_command
 from alembic.config import Config as AlembicConfig
 
+from scout_careers.cli import auth as auth_cli
 from scout_careers.cli import company as company_cli
 from scout_careers.cli import runs as runs_cli
+from scout_careers.cli import scheduler as scheduler_cli
 from scout_careers.cli import seed as seed_cli
+from scout_careers.cli import source as source_cli
 from scout_careers.cli.output import echo, error
 from scout_careers.common.config import get_settings
 from scout_careers.common.logging import configure_logging
@@ -34,9 +38,12 @@ db_app = typer.Typer(no_args_is_help=True, help="Database migrations.")
 
 app.add_typer(db_app, name="db")
 app.add_typer(company_cli.app, name="company")
+app.add_typer(source_cli.app, name="source")
 app.add_typer(seed_cli.app, name="seed")
 app.add_typer(runs_cli.run_app, name="run")
 app.add_typer(runs_cli.runs_app, name="runs")
+app.add_typer(scheduler_cli.app, name="scheduler")
+app.add_typer(auth_cli.app, name="auth")
 
 
 def alembic_config(config_path: Path | None = None) -> AlembicConfig:

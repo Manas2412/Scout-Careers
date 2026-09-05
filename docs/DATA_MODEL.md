@@ -200,6 +200,19 @@ seen for two consecutive runs gets `closed_at` set.
 and a mail alert) are collapsed at ingest by `(company_id, normalised_title,
 location_city)`, keeping the record whose source has the higher fidelity rank.
 
+Two records sharing that key are collapsed **only** when they come from
+different sources, or from the same source with the same `content_hash`. The
+key is sufficient across sources — two ATSs render the same role differently, so
+there is no comparable text and a title-and-place match is all the evidence
+there is — but not within one, where several genuinely different openings
+routinely share a title and a city. The first live registry collapsed 722
+records and **685 of them had different descriptions**: three separate
+"Software Engineer" roles in San Francisco read as one, nine per cent of every
+posting held hidden from the operator. Inside one source the board renders the
+same text every run, so an identical hash is one listing seen twice and a
+different hash is a different job. `ingest/dedup.py::same_role` is the rule;
+loosening it is a data-loss change, not a tuning change.
+
 ### 4.2 `requirement`
 
 ```sql

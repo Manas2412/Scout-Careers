@@ -15,7 +15,6 @@ anything is written, so a malformed board token fails at seed time, not at 02:30
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -23,12 +22,18 @@ import typer
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from scout_careers.cli._async import run as run_async
 from scout_careers.cli.output import dash, echo, echo_json, echo_table, error
 from scout_careers.common.config import get_settings
 from scout_careers.common.errors import ScoutError
 from scout_careers.common.types import AtsType, CompanyTier
 from scout_careers.db.session import session_scope
-from scout_careers.registry.service import create_company, create_source, find_source
+from scout_careers.registry.service import (
+    create_company,
+    create_source,
+    find_source,
+    validate_tags,
+)
 from scout_careers.sources.registry import get_adapter
 
 app = typer.Typer(no_args_is_help=True, help="Load seed data.")
@@ -163,17 +168,27 @@ def companies(
     if not resolved.exists():
         error(f"No seed file at {resolved}.")
         raise typer.Exit(code=1)
-    # Fail on an adapter this build cannot run before writing anything.
+    # Everything `create_company` and `create_source` can refuse, refused here
+    # first, before a single row is written.
+    #
+    # The adapter check was here from the start; the tag check was not, and a
+    # bare `reserved` on the last row of the file failed on row 44 — after 43
+    # companies had been created. The transaction rolled them back, so nothing
+    # was corrupted, but the operator got a stack trace from inside the write
+    # loop for a mistake that is visible in the YAML without a database at all.
+    # A seed file is edited by hand more often than anything else here, so every
+    # rule it can break belongs in this block.
     try:
         seed = load_seed(resolved)
         for entry in seed.companies:
             get_adapter(entry.adapter).parse_config(entry.config)
+            validate_tags(entry.tags)
     except (ValidationError, ValueError, ScoutError) as exc:
         error(f"The seed file is not valid: {exc}")
         raise typer.Exit(code=1) from exc
 
     get_settings()
-    code = asyncio.run(_seed(resolved, as_json))
+    code = run_async(_seed(resolved, as_json))
     if code:
         raise typer.Exit(code=code)
 

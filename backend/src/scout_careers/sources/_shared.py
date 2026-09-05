@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import time
 
-from pydantic import ValidationError
+from pydantic import BeforeValidator, ValidationError
 
 from scout_careers.common.errors import AdapterConfigError, SchemaDriftError
 from scout_careers.common.text import truncate_at_paragraph
@@ -147,10 +147,62 @@ def bound_description(text: str, limit: int) -> tuple[str, bool]:
     return bounded, len(bounded) < len(text)
 
 
+# ---------------------------------------------------------------------------
+# Null tolerance on defaulted upstream fields
+# ---------------------------------------------------------------------------
+#
+# A pydantic default — `= False`, `Field(default_factory=list)` — applies only
+# when the key is ABSENT. An explicit JSON `null` still hits the validator and
+# fails. Job-board APIs use the two interchangeably: Greenhouse sends
+# `"metadata": null` on boards with no custom fields, Ashby sends
+# `"isRemote": null` on postings where the recruiter left it unset.
+#
+# This cost a live run: eight of forty-three sources — Stripe, Figma, Postman,
+# OpenAI, Cohere, ElevenLabs, Notion, Supabase — failed `schema_error` on
+# exactly this, while every fixture-backed test passed, because hand-written
+# fixtures contain the fields their author remembered to include.
+#
+# The rule these encode: **every defaulted field on an upstream model tolerates
+# an explicit null.** A null from an upstream we do not control is missing data,
+# not a contract breach, and refusing a whole board over one unset boolean is
+# the wrong trade.
+
+
+def _none_to_empty_list(value: object) -> object:
+    return [] if value is None else value
+
+
+def _none_to_empty_dict(value: object) -> object:
+    return {} if value is None else value
+
+
+def _none_to_false(value: object) -> object:
+    return False if value is None else value
+
+
+def _none_to_true(value: object) -> object:
+    return True if value is None else value
+
+
+#: Annotate a defaulted list field: ``Annotated[list[X], NullIsEmptyList]``.
+NullIsEmptyList = BeforeValidator(_none_to_empty_list)
+#: Annotate a defaulted nested model: ``Annotated[Model, NullIsEmptyModel]``.
+#: An empty mapping validates into the model's own field defaults.
+NullIsEmptyModel = BeforeValidator(_none_to_empty_dict)
+#: Annotate a defaulted boolean whose absent meaning is False.
+NullIsFalse = BeforeValidator(_none_to_false)
+#: Annotate a defaulted boolean whose absent meaning is True.
+NullIsTrue = BeforeValidator(_none_to_true)
+
+
 __all__ = [
     "HTTP_FORBIDDEN",
     "HTTP_GONE",
     "HTTP_NOT_FOUND",
+    "NullIsEmptyList",
+    "NullIsEmptyModel",
+    "NullIsFalse",
+    "NullIsTrue",
     "bound_description",
     "company_guess",
     "config_error",

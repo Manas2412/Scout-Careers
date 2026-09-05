@@ -1,11 +1,17 @@
 """Stage ③: collapsing the same role seen through two different sources.
 
 The key is ``(company_id, normalise_title(title), location_city)``
-(DATA_MODEL.md §4.1). The winner is the record whose source has the higher
-``fidelity_rank`` (SOURCE_ADAPTERS.md §8); equal ranks — ``ashby`` and
-``greenhouse`` both sit at 90 — break on ``first_seen_at`` **ascending**, so the
-record we saw first wins and collapsing does not thrash when both boards list the
-same role.
+(DATA_MODEL.md §4.1), qualified by :func:`same_role`: two records sharing that
+key are collapsed only when they come from **different sources**, or from the
+same source with the **same ``content_hash``**. The qualifier is not a detail —
+without it 685 of 722 collapsed records on the first live registry were distinct
+jobs that happened to share a title and a city, hidden from the operator by a key
+that cannot tell a duplicate listing from a duplicate title.
+
+The winner is the record whose source has the higher ``fidelity_rank``
+(SOURCE_ADAPTERS.md §8); equal ranks — ``ashby`` and ``greenhouse`` both sit at
+90 — break on ``first_seen_at`` **ascending**, so the record we saw first wins
+and collapsing does not thrash when both boards list the same role.
 
 Three properties are load-bearing and each has a test:
 
@@ -99,6 +105,12 @@ class DedupCandidate:
         title: The original title; the key uses ``normalise_title`` of it.
         location_city: Part of the key, canonicalised by the adapter.
         adapter: The owning source's adapter, which supplies the rank.
+        source_id: The owning source. Two records from the *same* source are
+            not cross-source duplicates by definition, so the key alone cannot
+            decide them — see :func:`same_role`.
+        content_hash: The hash of ``description_text``. The only evidence
+            available for whether two same-source postings are one role listed
+            twice or two roles with the same title.
         first_seen_at: The tie-break, ascending.
         filtered_out: Its current flag.
         filter_reason: Its current reason, which decides whether the flag is
@@ -110,6 +122,8 @@ class DedupCandidate:
     title: str
     location_city: str | None
     adapter: AtsType
+    source_id: int
+    content_hash: str
     first_seen_at: datetime
     filtered_out: bool = False
     filter_reason: str | None = None
@@ -143,6 +157,39 @@ class DedupPlan:
         return not self.supersede and not self.restore
 
 
+def same_role(candidate: DedupCandidate, winner: DedupCandidate) -> bool:
+    """Report whether two records sharing the dedup key are really one role.
+
+    Args:
+        candidate: The record that would be superseded.
+        winner: The record that would win.
+
+    Returns:
+        True when collapsing them is safe.
+
+    ``(company, title, city)`` is the right key **across** sources: the same
+    role on a company's Greenhouse board and in a LinkedIn alert has no shared
+    identifier and no comparable text, so a title-and-place match is the only
+    evidence there is.
+
+    Within one source it is not enough, and the first live registry proved it:
+    of 722 collapsed records, **685 had different description text**. Databricks
+    lists 871 roles, and three separate "Software Engineer" openings in San
+    Francisco are three jobs, not one posted three times. Nine per cent of every
+    posting held was being hidden from the operator by a key that could not tell
+    a duplicate listing from a duplicate title.
+
+    Inside one source the description settles it, because the same board renders
+    the same text every time: identical hash is one listing seen twice, and a
+    different hash is a different job. Across sources the hashes never match —
+    different ATSs render different text for the same role — which is exactly
+    why the comparison is scoped to one source rather than applied everywhere.
+    """
+    if candidate.source_id != winner.source_id:
+        return True
+    return candidate.content_hash == winner.content_hash
+
+
 def _precedence(candidate: DedupCandidate) -> tuple[int, float, str]:
     """Return the sort key that picks a winner: rank desc, first_seen asc, id asc.
 
@@ -173,10 +220,15 @@ def plan_collapse(candidates: Iterable[DedupCandidate]) -> DedupPlan:
 
     for group in groups.values():
         winner = min(group, key=_precedence)
-        if winner.superseded:
-            restore.append(winner.id)
         for candidate in group:
-            if candidate.id == winner.id:
+            if candidate.id == winner.id or not same_role(candidate, winner):
+                # Not superseded by anything. If it is *currently* flagged, that
+                # flag is now false and clearing it is this pass's job — which
+                # is what makes tightening the rule self-healing: the 685 rows
+                # wrongly collapsed under the old key are released on the next
+                # run rather than needing a migration to find them.
+                if candidate.superseded:
+                    restore.append(candidate.id)
                 continue
             if candidate.filtered_out and candidate.filter_reason == _reason(winner.id):
                 # Already pointing at this winner; rewriting it would bump
@@ -219,6 +271,8 @@ async def load_candidates(
             JobPosting.title,
             JobPosting.location_city,
             Source.adapter,
+            JobPosting.source_id,
+            JobPosting.content_hash,
             JobPosting.first_seen_at,
             JobPosting.filtered_out,
             JobPosting.filter_reason,
@@ -236,6 +290,8 @@ async def load_candidates(
             title=row.title,
             location_city=row.location_city,
             adapter=row.adapter,
+            source_id=row.source_id,
+            content_hash=row.content_hash,
             first_seen_at=row.first_seen_at,
             filtered_out=row.filtered_out,
             filter_reason=row.filter_reason,
@@ -307,4 +363,5 @@ __all__ = [
     "fidelity_rank",
     "load_candidates",
     "plan_collapse",
+    "same_role",
 ]

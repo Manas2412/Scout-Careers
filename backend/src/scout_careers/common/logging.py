@@ -75,7 +75,13 @@ def configure_logging(settings: Settings) -> None:
     shared: list[structlog.typing.Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
-        structlog.stdlib.add_logger_name,
+        # NOT `structlog.stdlib.add_logger_name`: that processor reads
+        # `logger.name`, which only exists on a stdlib logger. The factory below
+        # is `PrintLoggerFactory`, whose `PrintLogger` has no `.name`, so the
+        # processor raises `AttributeError` on the first real log call — at
+        # runtime, in the CLI, not in any test that does not log through the
+        # configured pipeline. `get_logger` binds the `logger` key itself
+        # instead, which is factory-agnostic and produces the same field.
         structlog.processors.TimeStamper(fmt="iso", utc=True),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.UnicodeDecoder(),
@@ -106,9 +112,9 @@ def get_logger(name: str) -> structlog.stdlib.BoundLogger:
         name: Usually ``__name__``.
 
     Returns:
-        A structlog bound logger.
+        A structlog bound logger carrying a ``logger`` key naming the module.
     """
-    logger: structlog.stdlib.BoundLogger = structlog.get_logger(name)
+    logger: structlog.stdlib.BoundLogger = structlog.get_logger(name).bind(logger=name)
     return logger
 
 

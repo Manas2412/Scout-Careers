@@ -421,3 +421,87 @@ async def test_the_lock_is_released_even_when_the_run_fails(settings, monkeypatc
         await run_discovery(_session([]), "01RUN", deps=deps)
 
     assert lock.released is True
+
+
+# ---------------------------------------------------------------------------
+# --force relaxes the poll interval, and nothing else
+# ---------------------------------------------------------------------------
+#
+# The interval is a scheduling rule, not a policy one. After fixing an adapter
+# you want the whole registry re-fetched now; "wait until 08:00 tomorrow, or
+# type out forty-three ids" is not a real choice. `enabled` and a blacklisted
+# company are decisions, and a decision a re-run flag can bypass is not a
+# decision — so force must not touch either.
+
+
+def test_force_drops_the_due_clause_but_keeps_enabled_and_blacklist() -> None:
+    """Asserted on the compiled SQL: the behaviour lives in the WHERE clause."""
+    from sqlalchemy.dialects import postgresql
+
+    from scout_careers.ingest import runner as runner_module
+
+    captured: list[str] = []
+
+    class _CapturingSession:
+        async def execute(self, stmt: object) -> object:
+            captured.append(
+                str(stmt.compile(dialect=postgresql.dialect()))  # type: ignore[attr-defined]
+            )
+
+            class _Empty:
+                def __iter__(self) -> object:
+                    return iter(())
+
+                def scalars(self) -> object:
+                    return self
+
+                def all(self) -> list[object]:
+                    return []
+
+            return _Empty()
+
+    async def _run(force: bool) -> str:
+        captured.clear()
+        await runner_module.load_due_sources(
+            _CapturingSession(),  # type: ignore[arg-type]
+            None,
+            force=force,
+        )
+        return captured[0]
+
+    scheduled = asyncio.run(_run(force=False))
+    forced = asyncio.run(_run(force=True))
+
+    # The due-date comparison is the only thing force removes.
+    assert "make_interval" in scheduled
+    assert "make_interval" not in forced
+
+    # Both keep the two conditions that are policy, not scheduling.
+    for sql in (scheduled, forced):
+        assert "enabled" in sql
+        assert "status !=" in sql or "status IS DISTINCT FROM" in sql
+        assert "deleted_at IS NULL" in sql
+
+
+def test_force_is_threaded_from_run_discovery_to_the_query() -> None:
+    """The wiring, not just the parameter.
+
+    `--force` shipped once as a flag that reached `run_discovery`, was described
+    in its docstring, and was never forwarded to the query it existed to change.
+    The run then quietly selected only the two sources that had never run — which
+    looks like a working command until you count the sources. mypy does not flag
+    an unused parameter; ruff's ARG rule does, and this pins the wiring.
+    """
+    import inspect
+
+    from scout_careers.ingest import runner as runner_module
+
+    assert "force" in inspect.signature(runner_module.run_discovery).parameters
+    assert "force" in inspect.signature(runner_module._execute).parameters
+    assert "force" in inspect.signature(runner_module.load_due_sources).parameters
+
+    # Each hop passes it on, rather than merely accepting it.
+    assert "force=force" in inspect.getsource(runner_module.run_discovery)
+    assert "load_due_sources(session, source_ids, force=force)" in inspect.getsource(
+        runner_module._execute
+    )

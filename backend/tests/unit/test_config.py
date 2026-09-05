@@ -134,9 +134,31 @@ def test_get_settings_is_cached() -> None:
 def test_no_phase_two_keys_leaked_into_settings() -> None:
     # extra="forbid" means .env may only carry keys declared here, so a stray
     # LLM_/SCORING_/FF_ field would force those keys into .env.example early.
-    prefixes = ("llm_", "scoring_", "generation_", "ledger_", "ff_", "export_", "mail_")
+    #
+    # `mail_` was on this list while Phase 1 shipped the alert adapter and no
+    # transport for it. Phase 1 now ships the Gmail reader, so MAIL_ENABLED,
+    # MAIL_TOKEN_PATH and MAIL_TOKEN_KEY are Phase 1 keys. The Phase 2 half of
+    # the module — the digest — is asserted absent below instead, by name,
+    # because that is the part whose arrival early would be a real leak.
+    prefixes = ("llm_", "scoring_", "generation_", "ledger_", "ff_", "export_")
     for field_name in Settings.model_fields:
         assert not field_name.startswith(prefixes), f"{field_name} is not Phase 1"
+
+
+def test_no_send_side_mail_keys_exist_yet() -> None:
+    # The digest, its recipient and its gmail.send scope are Phase 2. A field
+    # here would mean the send capability had been configured before the code
+    # that is allowed to use it exists.
+    phase_two = {
+        "digest_enabled",
+        "digest_send_at",
+        "digest_max_queue_items",
+        "digest_max_alert_items",
+        "mail_operator_address",
+        "mail_poll_cron",
+        "mail_rate_units_per_sec",
+    }
+    assert not (phase_two & set(Settings.model_fields))
 
 
 ENV_EXAMPLE = Path(__file__).resolve().parents[3] / ".env.example"
@@ -157,3 +179,81 @@ def test_env_example_declares_every_phase_1_key_and_no_others() -> None:
         if line.strip() and not line.lstrip().startswith("#") and "=" in line
     }
     assert declared == set(Settings.model_fields)
+
+
+# ---------------------------------------------------------------------------
+# GMAIL_CLIENT_SECRETS_PATH: a value in the wrong key must say so
+# ---------------------------------------------------------------------------
+#
+# Every string is a valid Path, so a Fernet key pasted into this setting was
+# accepted in silence and the boot failure that followed named MAIL_TOKEN_KEY —
+# a different setting entirely. That cost a debugging round.
+
+
+def test_a_client_secrets_path_that_is_not_a_file_is_refused() -> None:
+    with pytest.raises(ConfigError) as excinfo:
+        make_settings(gmail_client_secrets_path="xbJZmnNotAPathButAFernetKey0000000000000000=")
+
+    message = str(excinfo.value)
+    assert "GMAIL_CLIENT_SECRETS_PATH" in message
+    # The message must point at the setting the operator probably meant.
+    assert "MAIL_TOKEN_KEY" in message
+
+
+def test_an_existing_client_secrets_file_is_accepted(tmp_path: Path) -> None:
+    secrets = tmp_path / "client_secret.json"
+    secrets.write_text('{"installed": {"client_id": "x", "client_secret": "y"}}')
+
+    settings = make_settings(
+        mail_enabled=False,
+        gmail_client_secrets_path=str(secrets),
+    )
+    assert settings.gmail_client_secrets_path == secrets
+
+
+def test_the_mail_token_key_error_tells_you_how_to_generate_one() -> None:
+    with pytest.raises(ConfigError) as excinfo:
+        make_settings(
+            mail_enabled=True,
+            mail_token_key=None,
+            gmail_client_id="x",
+            gmail_client_secret="y",
+        )
+    assert "Fernet.generate_key" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# MAIL_TOKEN_PATH is anchored, not CWD-relative
+# ---------------------------------------------------------------------------
+#
+# The token was written to backend/.secrets/ because `auth gmail` ran from
+# backend/, then was invisible to anything launched from the repository root —
+# which reports mail as `disabled` rather than as a missing file. Same trap as
+# a relative env_file, same fix.
+
+
+def test_a_relative_token_path_is_anchored_to_the_repo_root() -> None:
+    from scout_careers.common.config import REPO_ROOT
+
+    settings = make_settings(mail_enabled=False, mail_token_path=".secrets/gmail.token")
+
+    assert settings.mail_token_path.is_absolute()
+    assert settings.mail_token_path == REPO_ROOT / ".secrets/gmail.token"
+
+
+def test_an_absolute_token_path_is_left_alone() -> None:
+    """Production uses /var/lib/scout/gmail.token and must not be rewritten."""
+    settings = make_settings(mail_enabled=False, mail_token_path="/var/lib/scout/gmail.token")
+
+    assert settings.mail_token_path == Path("/var/lib/scout/gmail.token")
+
+
+def test_the_token_path_is_the_same_from_any_working_directory(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The property that actually matters: one token, every entry point."""
+    from_here = make_settings(mail_enabled=False, mail_token_path=".secrets/gmail.token")
+    monkeypatch.chdir(tmp_path)
+    from_elsewhere = make_settings(mail_enabled=False, mail_token_path=".secrets/gmail.token")
+
+    assert from_here.mail_token_path == from_elsewhere.mail_token_path

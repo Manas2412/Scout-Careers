@@ -32,7 +32,7 @@ import html as html_entities
 import time
 from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -40,6 +40,7 @@ from scout_careers.common.errors import AdapterConfigError, ScoutError, Upstream
 from scout_careers.common.logging import get_logger
 from scout_careers.common.types import AtsType
 from scout_careers.sources._shared import (
+    NullIsEmptyList,
     bound_description,
     company_guess,
     config_error,
@@ -110,9 +111,11 @@ class _GreenhouseJob(BaseModel):
     internal_job_id: int | None = None
     requisition_id: str | None = None
     location: _GreenhouseLocation | None = None
-    departments: list[_GreenhouseNamed] = Field(default_factory=list)
-    offices: list[_GreenhouseOffice] = Field(default_factory=list)
-    metadata: list[_GreenhouseMetadata] = Field(default_factory=list)
+    # Every defaulted list tolerates an explicit null — Greenhouse sends
+    # `"metadata": null` on boards with no custom fields (_shared.py).
+    departments: Annotated[list[_GreenhouseNamed], NullIsEmptyList] = Field(default_factory=list)
+    offices: Annotated[list[_GreenhouseOffice], NullIsEmptyList] = Field(default_factory=list)
+    metadata: Annotated[list[_GreenhouseMetadata], NullIsEmptyList] = Field(default_factory=list)
 
 
 class _GreenhousePage(BaseModel):

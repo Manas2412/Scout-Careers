@@ -7,12 +7,12 @@ to be able to see *which* one without opening a log aggregator.
 
 from __future__ import annotations
 
-import asyncio
 from typing import Annotated, Any
 
 import typer
 from sqlalchemy import select
 
+from scout_careers.cli._async import run as run_async
 from scout_careers.cli.output import dash, echo, echo_json, echo_table, error
 from scout_careers.common.config import get_settings
 from scout_careers.common.ids import new_ulid
@@ -70,9 +70,9 @@ def _progress(result: SourceResult) -> None:
     )
 
 
-async def _dry_run(source_ids: list[int] | None, as_json: bool) -> None:
+async def _dry_run(source_ids: list[int] | None, as_json: bool, force: bool) -> None:
     async with session_scope() as session:
-        due = await load_due_sources(session, source_ids)
+        due = await load_due_sources(session, source_ids, force=force)
     if as_json:
         echo_json(
             [
@@ -103,7 +103,7 @@ async def _dry_run(source_ids: list[int] | None, as_json: bool) -> None:
     )
 
 
-async def _discovery(source_ids: list[int] | None, as_json: bool) -> int:
+async def _discovery(source_ids: list[int] | None, as_json: bool, force: bool) -> int:
     settings = get_settings()
     deps = RunnerDeps.build(settings)
     deps.on_result = None if as_json else _progress
@@ -114,7 +114,7 @@ async def _discovery(source_ids: list[int] | None, as_json: bool) -> int:
 
     try:
         async with session_scope() as session:
-            outcome = await run_discovery(session, run_id, source_ids, deps=deps)
+            outcome = await run_discovery(session, run_id, source_ids, deps=deps, force=force)
     except RunAlreadyInFlight:
         error("A discovery run is already in flight. It was refused, not queued.")
         return 1
@@ -156,19 +156,28 @@ def discovery(
     dry_run: Annotated[
         bool, typer.Option("--dry-run", help="List what would run and stop.")
     ] = False,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            help="Ignore every source's poll interval. Still honours enabled and blacklists.",
+        ),
+    ] = False,
     as_json: Annotated[bool, typer.Option("--json", help="Machine-readable output.")] = False,
 ) -> None:
     """Run stages ① DISCOVER, ② NORMALISE and ③ DEDUPE for every due source.
 
     Naming sources with ``--source-id`` ignores their poll interval — that is
     the point of re-running a subset after fixing a board token — but never
-    overrides ``enabled`` or a blacklisted company.
+    overrides ``enabled`` or a blacklisted company. ``--force`` is the same
+    relaxation for the whole registry, for when an adapter fix means every
+    board should be re-fetched now rather than tomorrow at 08:00.
     """
     configure_logging(get_settings())
     if dry_run:
-        asyncio.run(_dry_run(source_ids, as_json))
+        run_async(_dry_run(source_ids, as_json, force))
         return
-    code = asyncio.run(_discovery(source_ids, as_json))
+    code = run_async(_discovery(source_ids, as_json, force))
     if code:
         raise typer.Exit(code=code)
 
@@ -267,7 +276,7 @@ def list_runs(
     as_json: Annotated[bool, typer.Option("--json", help="Machine-readable output.")] = False,
 ) -> None:
     """List recent runs, newest first."""
-    asyncio.run(_list_runs(limit, as_json))
+    run_async(_list_runs(limit, as_json))
 
 
 @runs_app.command("show")
@@ -276,7 +285,7 @@ def show_run(
     as_json: Annotated[bool, typer.Option("--json", help="Machine-readable output.")] = False,
 ) -> None:
     """Show one run's stats and its per-source results."""
-    code = asyncio.run(_show_run(run_id, as_json))
+    code = run_async(_show_run(run_id, as_json))
     if code:
         raise typer.Exit(code=code)
 

@@ -281,6 +281,21 @@ Owned by `EMAIL_INGESTION.md` §12.
 | `MAIL_TOKEN_KEY` | secret | — | **if `MAIL_ENABLED`** | Fernet key encrypting the token file. **Never stored in the same file as the token.** Losing it makes the stored token permanently undecryptable |
 | `MAIL_RATE_UNITS_PER_SEC` | int | `20` | no | Self-imposed Gmail quota-unit ceiling |
 
+
+> **What Phase 1 actually ships.** Reading, and nothing else: `MAIL_ENABLED`,
+> `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_CLIENT_SECRETS_PATH` (the
+> downloaded desktop-client JSON, as an alternative to the previous two),
+> `MAIL_TOKEN_PATH`, `MAIL_TOKEN_KEY`, `GMAIL_REFRESH_LOCK_TTL_S` and
+> `GMAIL_MAX_MESSAGES`. `MAIL_ENABLED` defaults to **`false`**, not `true`: a
+> Gmail grant is the highest-value secret in the system, and nothing should hold
+> one because a default said so.
+>
+> **Only `gmail.readonly` is requested.** `gmail.send` belongs to the digest and
+> arrives with it, which is why `MAIL_OPERATOR_ADDRESS`, `DIGEST_*` and the
+> polling and classification keys below have no `Settings` fields yet — and, with
+> `extra="forbid"`, cannot be set. Re-consent is one browser screen; holding the
+> capability to send as the operator for a phase we do not use it is not.
+
 ### 6.2 Polling and linkage
 
 | Variable | Type | Default | Required | Description |
@@ -342,6 +357,31 @@ APScheduler, in-process, Postgres job store (`ARCHITECTURE.md` §4).
 The seven registered jobs: `discovery`, `mail_poll`, `digest`, `export`, `prune`,
 `rescore`, `heartbeat`. The go-live checklist asserts the count.
 
+> **What Phase 1 actually ships.** `Settings` uses `extra="forbid"`, so a key in
+> `.env` with no field behind it is a boot failure — which makes the difference
+> between "designed" and "implemented" operationally real. Phase 1 declares
+> `SCHEDULER_ENABLED`, `SCHEDULER_JOBSTORE_TABLE`, `SCHEDULER_MISFIRE_GRACE_S`,
+> `SCHEDULER_SHUTDOWN_GRACE_S`, `DISCOVERY_CRON_HOUR`, `DISCOVERY_CRON_MINUTE`
+> and `RUN_WALL_CLOCK_BUDGET_S`. Three deliberate differences from the table
+> above:
+>
+> - **`DISCOVERY_CRON_HOUR` / `DISCOVERY_CRON_MINUTE` replace `DISCOVERY_CRON`.**
+>   08:00 daily is the whole Phase 1 schedule, and two range-validated integers
+>   cannot be a cron expression that parses but means something else. A cron
+>   string comes back when a job needs a shape two integers cannot express.
+> - **No `SCHEDULER_TIMEZONE`.** The trigger is built in `TZ`, the field the
+>   rest of the system already uses for display. A second timezone setting is a
+>   second thing that can disagree, and the failure it produces — a run at a
+>   time nobody chose — is silent.
+> - **No `SCHEDULER_COALESCE` / `SCHEDULER_MAX_INSTANCES`.** Both are code
+>   constants (`scheduler/app.py`). `coalesce=false` has no correct value here:
+>   it turns three missed windows into three runs, two of which the run lock
+>   refuses and records as refusals that read like incidents.
+>
+> `RESCORE_CRON`, `EXPORT_CRON`, `PRUNE_CRON`, `HEARTBEAT_URL` and the other six
+> jobs arrive with the stages they drive. The registered job count is one.
+
+
 ---
 
 ## 8. Ingestion and sources
@@ -361,6 +401,7 @@ Owned by `SOURCE_ADAPTERS.md`.
 | `MAX_DESCRIPTION_CHARS` | int | `60000` | no | Truncation of `description_text` at persistence. A cost control that is also a memory control (`INFRASTRUCTURE.md` §3.3) |
 | `MAX_RESPONSE_BYTES` | int | `20971520` | no | Response-size cap in `SourceHttpClient`. A source returning an unbounded body is failed, not buffered |
 | `INGEST_CLOSE_AFTER_MISSED_RUNS` | int | `2` | no | Consecutive runs a posting may be unseen before `closed_at` is set |
+| `ALERT_COMPANY_MATCH_THRESHOLD` | float | `0.45` | no | Trigram similarity a parsed mail-alert employer name must reach to be filed under a registered company (`SOURCE_ADAPTERS.md` §7.3). Below it the lead goes to the reserved `unmatched` company. Lowering it mis-attributes, which is worse than missing: a mis-filed lead is indistinguishable from a real role at a tracked employer |
 | `DEFAULT_LOCATION_FILTER` | list | `IN,Remote` | no | Stage-④ location gate applied where `company.location_filter` is empty. **Tightening this is the first lever on LLM cost** — the filter saves more per day than the entire daily budget |
 | `FILTER_SENIORITY_DENY` | list | `intern,director,executive` | no | Seniority values killed at stage ④ |
 | `FILTER_KEYWORD_DENY` | list | (see `.env.example`) | no | Title keywords killed at stage ④ |
@@ -686,6 +727,7 @@ CIRCUIT_BREAKER_FAILURES=5
 MAX_DESCRIPTION_CHARS=60000
 MAX_RESPONSE_BYTES=20971520
 INGEST_CLOSE_AFTER_MISSED_RUNS=2
+ALERT_COMPANY_MATCH_THRESHOLD=0.45
 DEFAULT_LOCATION_FILTER=IN,Remote
 FILTER_SENIORITY_DENY=intern,director,executive
 FILTER_KEYWORD_DENY=sales,recruiter,teacher,nurse,driver,warehouse,firmware,rtos,device driver

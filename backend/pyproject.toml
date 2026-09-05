@@ -21,9 +21,19 @@ dependencies = [
   "structlog>=24.4",
   "selectolax>=0.3.21",
   "python-ulid>=2.7",
-  "apscheduler>=3.10",
+  "apscheduler>=3.10,<4",
   "typer>=0.12",
   "pyyaml>=6.0",
+  # APScheduler's SQLAlchemy job store is synchronous and cannot speak asyncpg,
+  # so the Postgres job store needs a blocking driver alongside the async one.
+  # Two engines, one database (SDD.md §6.2).
+  "psycopg[binary]>=3.2",
+  # Gmail: the desktop OAuth flow, and the read-only API client.
+  "google-auth>=2.35",
+  "google-auth-oauthlib>=1.2",
+  "google-api-python-client>=2.140",
+  # Fernet, for the OAuth token at rest. There is no plaintext fallback.
+  "cryptography>=43",
 ]
 
 [project.scripts]
@@ -65,6 +75,12 @@ select = [
   "DTZ",           # naive datetimes        (load-bearing, DEVELOPMENT.md §4.1)
   "T20",           # print / pprint         (load-bearing)
   "ASYNC",         # blocking calls in async
+  # A parameter that is accepted, documented, and then never used is a
+  # feature that silently does nothing. `run discovery --force` shipped
+  # exactly that: the flag reached `run_discovery`, was described in its
+  # docstring, and was never forwarded to the query it was meant to
+  # change. mypy does not catch it; this does.
+  "ARG",           # unused arguments
   "SIM", "RUF",
 ]
 ignore = [
@@ -80,7 +96,10 @@ ignore = [
 allowed-confusables = ["\u2013", "\u2014", "\u2019", "\u00a0"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S105", "S106", "RUF001", "RUF002"]  # assert is the point; unicode is the fixture
+# ARG: a fake/stub deliberately accepts the real signature and ignores most
+# of it — that is what makes it a substitute. The rule earns its keep in
+# src/, where an ignored parameter is a feature that does nothing.
+"tests/*" = ["S101", "S105", "S106", "RUF001", "RUF002", "ARG"]
 "migrations/*" = ["E402", "F401", "N999"]    # alembic's generated shape
 "migrations/versions/*" = ["INP001"]
 
@@ -109,7 +128,18 @@ module = ["tests.*"]
 disallow_untyped_defs = false      # fixtures stay readable
 
 [[tool.mypy.overrides]]
-module = ["selectolax.*", "apscheduler.*", "docx.*"]
+module = [
+  "selectolax.*",
+  "apscheduler.*",
+  "docx.*",
+  # Google ships no stubs for any of these. Named individually rather than as a
+  # blanket `google.*`: google-auth's own typing is partial and improving, and a
+  # blanket rule would silently swallow it when it lands.
+  "google.auth.*",
+  "google.oauth2.*",
+  "google_auth_oauthlib.*",
+  "googleapiclient.*",
+]
 ignore_missing_imports = true      # named, not blanket
 
 # ---------------------------------------------------------------------------
@@ -150,3 +180,21 @@ name = "common/ imports nothing from the package"
 type = "forbidden"
 source_modules = ["scout_careers.common"]
 forbidden_modules = ["scout_careers.db", "scout_careers.sources"]
+
+# sources/ owns the MailReader protocol it needs and imports no transport.
+# ingest/ is the only place the two meet, and it meets them by injection
+# (SOURCE_ADAPTERS.md §7). Without this contract the layering is a convention,
+# and a convention is one convenient import away from not being true.
+[[tool.importlinter.contracts]]
+name = "sources/ never imports the mail transport"
+type = "forbidden"
+source_modules = ["scout_careers.sources"]
+forbidden_modules = ["scout_careers.mail", "scout_careers.scheduler", "scout_careers.ingest"]
+
+# mail/ is a transport. It reads sources/base.py for the DTO and the protocol
+# and knows nothing about persistence or scheduling.
+[[tool.importlinter.contracts]]
+name = "mail/ never touches the database or the scheduler"
+type = "forbidden"
+source_modules = ["scout_careers.mail"]
+forbidden_modules = ["scout_careers.db", "scout_careers.ingest", "scout_careers.scheduler"]

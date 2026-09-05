@@ -38,7 +38,7 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, ClassVar, Protocol
@@ -77,6 +77,7 @@ from scout_careers.db.session import get_session_factory, session_scope
 from scout_careers.ingest.close import close_missing
 from scout_careers.ingest.dedup import collapse_duplicates
 from scout_careers.ingest.persist import PersistCounts, persist_postings
+from scout_careers.ingest.resolve import ALERT_RAW_FLAGS, resolve_alert_companies
 from scout_careers.ingest.results import (
     RunStats,
     failure_summary,
@@ -84,6 +85,7 @@ from scout_careers.ingest.results import (
     resolve_run_status,
     source_results_payload,
 )
+from scout_careers.mail.gmail import build_mail_reader, close_mail_reader
 from scout_careers.sources.base import MailReader, RawPosting, SourceAdapter, SourceResult
 from scout_careers.sources.http import (
     InRunCircuitBreaker,
@@ -137,9 +139,11 @@ class RunLockUnavailable(RunRefused):
 class MailReaderUnavailable(ScoutError):
     """A ``mail_alert`` source came due with no mailbox reader wired in.
 
-    Phase 1 ships the adapter but not the Gmail transport it reads through, so
-    the source is reported ``disabled`` — not attempted, nobody's fault, no
-    failure counted against a board that did nothing wrong.
+    The ordinary state of an install that has not run ``scout-careers auth
+    gmail`` yet, or one where ``MAIL_ENABLED`` is false. The source is reported
+    ``disabled`` — not attempted, nobody's fault, no failure counted against a
+    board that did nothing wrong — rather than ``error``, because an
+    unauthorised mailbox is a configuration state, not a fault.
     """
 
     error_code: ClassVar[str] = "adapter.mail_reader_unavailable"
@@ -326,11 +330,23 @@ class RunnerDeps:
     def build(cls, settings: Settings | None = None) -> RunnerDeps:
         """Build the production dependency set.
 
+        The mailbox reader is wired here, and only here. When Gmail is
+        configured, ``mail_alert`` sources get a real ``GmailClient``; when it is
+        not, ``mail_reader`` stays ``None`` and the runner reports those sources
+        as ``disabled`` — not attempted, nobody's fault, no failure counted
+        against a board that did nothing wrong.
+
+        This is also the one place ``mail/`` and ``sources/`` meet. ``sources/``
+        owns the ``MailReader`` protocol and imports nothing from ``mail/``;
+        ``mail/`` implements the protocol and imports nothing back. The
+        injection is what keeps that true.
+
         Args:
             settings: Configuration; resolved from the environment when omitted.
 
         Returns:
-            Dependencies wired to the real Redis, session factory and HTTP client.
+            Dependencies wired to the real Redis, session factory, HTTP client
+            and — when authorised — mailbox.
         """
         resolved = settings or get_settings()
         redis: Redis = Redis.from_url(
@@ -339,10 +355,16 @@ class RunnerDeps:
             socket_timeout=resolved.redis_socket_timeout_s,
             decode_responses=True,
         )
-        return cls(settings=resolved, redis=redis)
+        return cls(
+            settings=resolved,
+            redis=redis,
+            mail_reader=build_mail_reader(resolved, redis),
+        )
 
     async def aclose(self) -> None:
         """Close anything this dependency set owns. Safe to call twice."""
+        await close_mail_reader(self.mail_reader)
+        self.mail_reader = None
         if self.redis is not None:
             await self.redis.aclose()
 
@@ -370,11 +392,12 @@ async def load_due_sources(
     source_ids: Sequence[int] | None = None,
     *,
     now: datetime | None = None,
+    force: bool = False,
 ) -> list[DueSource]:
     """Select the sources this run will attempt.
 
     Three conditions, and the third is the only one an explicit ``source_ids``
-    list relaxes:
+    list or ``force`` relaxes:
 
     1. ``source.enabled`` is true. A source the operator or the auto-disable
        threshold switched off stays off.
@@ -388,10 +411,18 @@ async def load_due_sources(
     of ``POST /runs/discovery {"source_ids": [...]}`` after fixing a board token
     — so it bypasses the poll interval. It does not, and cannot, bypass 1 or 2.
 
+    ``force`` is the same relaxation for every source rather than a named few.
+    It exists because the interval is a *scheduling* rule, not a policy one:
+    after fixing an adapter you want the whole registry re-fetched now, and
+    "wait until tomorrow, or type out forty-three ids" is not a real choice. It
+    is off by default, so the scheduled run is never accidentally a full sweep,
+    and it is equally unable to bypass 1 or 2.
+
     Args:
         session: The run's session.
         source_ids: Restrict to these sources, and ignore the poll interval.
         now: The comparison clock; defaults to the current UTC time.
+        force: Ignore the poll interval for every source that passes 1 and 2.
 
     Returns:
         The due sources, ordered by id so a run is reproducible.
@@ -409,7 +440,7 @@ async def load_due_sources(
     )
     if source_ids is not None:
         stmt = stmt.where(Source.id.in_(list(source_ids)))
-    else:
+    elif not force:
         due_at = Source.last_run_at + func.make_interval(
             0, 0, 0, 0, 0, Source.poll_interval_minutes
         )
@@ -784,6 +815,21 @@ async def persist_source(
 
     async with session_scope(session_factory or get_session_factory()) as session:
         if postings:
+            # A board's source is an employer, so `source.company_id` is the
+            # answer for every adapter but one. A mail alert is a mailbox
+            # carrying roles at many employers; SOURCE_ADAPTERS.md §7.3 says who
+            # each belongs to, and ingest/resolve.py works it out.
+            overrides: Mapping[str, int] | None = None
+            raw_extra: Mapping[str, Any] | None = None
+            if source.adapter is AtsType.MAIL_ALERT:
+                overrides = await resolve_alert_companies(
+                    session,
+                    postings,
+                    threshold=settings.alert_company_match_threshold,
+                    source_id=source.id,
+                )
+                raw_extra = ALERT_RAW_FLAGS
+
             counts = await persist_postings(
                 session,
                 postings,
@@ -791,6 +837,8 @@ async def persist_source(
                 company_id=source.company_id,
                 now=seen_at,
                 max_description_chars=settings.max_description_chars,
+                company_overrides=overrides,
+                raw_extra=raw_extra,
             )
         closed = await close_missing(
             session,
@@ -901,6 +949,7 @@ async def run_discovery(
     source_ids: Sequence[int] | None = None,
     *,
     deps: RunnerDeps | None = None,
+    force: bool = False,
 ) -> RunOutcome:
     """Run stage ① for every due source, and report what happened.
 
@@ -913,6 +962,8 @@ async def run_discovery(
         source_ids: Restrict the run to these sources; see
             :func:`load_due_sources` for what that does and does not relax.
         deps: Injected dependencies; the production set when omitted.
+        force: Ignore every source's poll interval; see
+            :func:`load_due_sources`.
 
     Returns:
         The run outcome.
@@ -940,7 +991,9 @@ async def run_discovery(
     started = time.monotonic()
     try:
         await _start_run(session, run_id, started_at)
-        outcome = await _execute(session, run_id, source_ids, deps=resolved, started=started)
+        outcome = await _execute(
+            session, run_id, source_ids, deps=resolved, started=started, force=force
+        )
     except (RunRefused, asyncio.CancelledError):
         raise
     except Exception as exc:
@@ -974,10 +1027,24 @@ async def _execute(
     *,
     deps: RunnerDeps,
     started: float,
+    force: bool = False,
 ) -> RunOutcome:
-    """Fetch every due source concurrently, then collapse and finalise."""
+    """Fetch every due source concurrently, then collapse and finalise.
+
+    Args:
+        session: The run's session.
+        run_id: The run's ULID.
+        source_ids: Restrict to these sources, or None for the due set.
+        deps: Resolved runner dependencies.
+        started: Monotonic start time, for the duration stat.
+        force: Ignore every source's poll interval; see
+            :func:`load_due_sources`.
+
+    Returns:
+        The run outcome.
+    """
     settings = deps.settings
-    sources = await load_due_sources(session, source_ids)
+    sources = await load_due_sources(session, source_ids, force=force)
     log.info("run_started", run_id=run_id, sources=len(sources))
 
     outcomes: dict[int, SourceOutcome] = {}
