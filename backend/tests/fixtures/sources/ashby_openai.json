@@ -1,0 +1,106 @@
+{
+  "apiVersion": "1",
+  "jobs": [
+    {
+      "id": "b3d9f0c1-2e44-4a6b-8c7d-9e0f1a2b3c4d",
+      "title": "Member of Technical Staff, Applied AI",
+      "department": "Applied",
+      "team": "Applied Engineering",
+      "employmentType": "FullTime",
+      "location": "Bengaluru, India",
+      "secondaryLocations": [
+        {
+          "location": "Remote - India",
+          "address": {
+            "postalAddress": { "addressRegion": "KA", "addressCountry": "IN" }
+          }
+        }
+      ],
+      "publishedAt": "2026-08-21T09:12:44.000Z",
+      "isListed": true,
+      "isRemote": false,
+      "descriptionHtml": "<div><p>About the team</p><p>Applied Engineering turns research into products people use every day.</p><p>Requirements</p><ul><li>5+ years shipping production software.</li><li>Experience with large language models in a product setting.</li><li>Fluency in Python.</li></ul></div>",
+      "descriptionPlain": "About the team\n\nApplied Engineering turns research into products people use every day.\n\nRequirements\n\n- 5+ years shipping production software.\n- Experience with large language models in a product setting.\n- Fluency in Python.",
+      "jobUrl": "https://jobs.ashbyhq.com/openai/b3d9f0c1-2e44-4a6b-8c7d-9e0f1a2b3c4d",
+      "applyUrl": "https://jobs.ashbyhq.com/openai/b3d9f0c1-2e44-4a6b-8c7d-9e0f1a2b3c4d/application",
+      "compensation": {
+        "compensationTierSummary": "₹45L – ₹70L",
+        "scrapeableCompensationSalarySummary": "₹45L – ₹70L",
+        "compensationTiers": [
+          {
+            "id": "tier-1",
+            "title": "India",
+            "tierSummary": "₹45L – ₹70L",
+            "components": [
+              {
+                "summary": "₹45L – ₹70L",
+                "componentType": "Salary",
+                "interval": "1 YEAR",
+                "currencyCode": "INR",
+                "minValue": 4500000,
+                "maxValue": 7000000
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "c4e0a1d2-3f55-4b7c-9d8e-0f1a2b3c4d5e",
+      "title": "Research Engineer, Inference",
+      "department": "Research",
+      "team": null,
+      "employmentType": "FullTime",
+      "location": "Remote - Worldwide",
+      "secondaryLocations": [],
+      "publishedAt": "2026-08-14T17:03:10.000Z",
+      "isListed": true,
+      "isRemote": true,
+      "descriptionHtml": "<div><p>Make inference faster and cheaper without losing quality.</p><ul><li>Deep CUDA or Triton experience.</li><li>Familiarity with transformer serving stacks.</li></ul></div>",
+      "descriptionPlain": "Make inference faster and cheaper without losing quality.\n\n- Deep CUDA or Triton experience.\n- Familiarity with transformer serving stacks.",
+      "jobUrl": "https://jobs.ashbyhq.com/openai/c4e0a1d2-3f55-4b7c-9d8e-0f1a2b3c4d5e",
+      "applyUrl": "https://jobs.ashbyhq.com/openai/c4e0a1d2-3f55-4b7c-9d8e-0f1a2b3c4d5e/application",
+      "compensation": null
+    },
+    {
+      "id": "d5f1b2e3-4066-4c8d-ae9f-1a2b3c4d5e6f",
+      "title": "Head of Trust and Safety, India",
+      "department": "Operations",
+      "team": "Trust and Safety",
+      "employmentType": "FullTime",
+      "location": "Mumbai, India",
+      "secondaryLocations": [
+        { "location": "New Delhi, India", "address": { "postalAddress": {} } }
+      ],
+      "publishedAt": "2026-07-30T11:45:00.000Z",
+      "isListed": false,
+      "isRemote": false,
+      "descriptionHtml": "<div><p>Confidential search. Not published.</p></div>",
+      "descriptionPlain": "Confidential search. Not published.",
+      "jobUrl": "https://jobs.ashbyhq.com/openai/d5f1b2e3-4066-4c8d-ae9f-1a2b3c4d5e6f",
+      "applyUrl": "https://jobs.ashbyhq.com/openai/d5f1b2e3-4066-4c8d-ae9f-1a2b3c4d5e6f/application",
+      "compensation": null
+    },
+    {
+      "id": "e6a2c3f4-5177-4d9e-bfa0-2b3c4d5e6f70",
+      "title": "Machine Learning Intern, Alignment",
+      "department": "Research",
+      "team": "Alignment",
+      "employmentType": "Intern",
+      "location": "Hyderabad, India",
+      "secondaryLocations": [],
+      "publishedAt": "2026-08-25T08:00:00.000Z",
+      "isListed": true,
+      "isRemote": false,
+      "descriptionHtml": "<div><p>A twelve-week internship on the alignment team.</p><ul><li>Enrolled in a graduate programme.</li><li>Prior research experience in RL or interpretability.</li></ul></div>",
+      "descriptionPlain": "A twelve-week internship on the alignment team.\n\n- Enrolled in a graduate programme.\n- Prior research experience in RL or interpretability.",
+      "jobUrl": "https://jobs.ashbyhq.com/openai/e6a2c3f4-5177-4d9e-bfa0-2b3c4d5e6f70",
+      "applyUrl": "https://jobs.ashbyhq.com/openai/e6a2c3f4-5177-4d9e-bfa0-2b3c4d5e6f70/application",
+      "compensation": {
+        "compensationTierSummary": "₹1,20,000 / month",
+        "scrapeableCompensationSalarySummary": "₹1,20,000 / month",
+        "compensationTiers": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "jobs": [
+    {
+      "absolute_url": "https://boards.greenhouse.io/stripe/jobs/6789012",
+      "data_compliance": [
+        {
+          "type": "gdpr",
+          "requires_consent": false,
+          "requires_processing_consent": false,
+          "requires_retention_consent": false,
+          "retention_period": null
+        }
+      ],
+      "internal_job_id": 5544332,
+      "id": 6789012,
+      "location": { "name": "Bengaluru, India" },
+      "metadata": [
+        {
+          "id": 1234,
+          "name": "Employment Type",
+          "value": "Full time",
+          "value_type": "single_select"
+        }
+      ],
+      "requisition_id": "JR-2026-4471",
+      "title": "Software Engineer, Payments Infrastructure",
+      "updated_at": "2026-08-29T11:04:33-04:00",
+      "content": "&lt;p&gt;Stripe builds the economic infrastructure for the internet. Our Payments Infrastructure team keeps the money-movement path correct under load.&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;What you&amp;#39;ll do&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Design and operate services that settle billions of dollars a year.&lt;/li&gt;\n&lt;li&gt;Work across Ruby, Java and Go in a large, well-tested monorepo.&lt;/li&gt;\n&lt;li&gt;Own reliability for the systems you build, including on-call.&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;&lt;strong&gt;Minimum requirements&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;5+ years of backend engineering experience.&lt;/li&gt;\n&lt;li&gt;Experience with distributed systems and relational databases (Postgres &amp;amp; MySQL).&lt;/li&gt;\n&lt;li&gt;A track record of shipping in a large codebase.&lt;/li&gt;\n&lt;/ul&gt;\n&lt;script&gt;window.__gh = 1;&lt;/script&gt;",
+      "departments": [
+        { "id": 41, "name": "Engineering", "parent_id": null, "child_ids": [98] },
+        { "id": 98, "name": "Payments Infrastructure", "parent_id": 41, "child_ids": [] }
+      ],
+      "offices": [
+        {
+          "id": 9,
+          "name": "Bengaluru",
+          "location": "Bengaluru, India",
+          "parent_id": 1,
+          "child_ids": []
+        }
+      ]
+    },
+    {
+      "absolute_url": "https://boards.greenhouse.io/stripe/jobs/6789013",
+      "data_compliance": [],
+      "internal_job_id": 5544332,
+      "id": 6789013,
+      "location": { "name": "Remote - India" },
+      "metadata": [
+        {
+          "id": 1234,
+          "name": "Employment Type",
+          "value": "Full time",
+          "value_type": "single_select"
+        },
+        { "id": 1290, "name": "Hiring Manager", "value": "", "value_type": "short_text" }
+      ],
+      "requisition_id": "JR-2026-4471",
+      "title": "Senior Machine Learning Engineer, Risk",
+      "updated_at": "2026-08-31T09:15:00Z",
+      "content": "&lt;div&gt;&lt;p&gt;The Risk org keeps fraud losses low without slowing legitimate businesses down.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Requirements&lt;/strong&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;7+ years applying machine learning to production problems.&lt;/li&gt;&lt;li&gt;Fluency in Python and SQL; comfort with Spark or an equivalent.&lt;/li&gt;&lt;li&gt;Experience owning model quality end to end, including monitoring.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;",
+      "departments": [{ "id": 41, "name": "Engineering", "parent_id": null, "child_ids": [] }],
+      "offices": [
+        {
+          "id": 22,
+          "name": "Remote (India)",
+          "location": "Remote - India",
+          "parent_id": null,
+          "child_ids": []
+        }
+      ]
+    },
+    {
+      "absolute_url": "https://job-boards.greenhouse.io/stripe/jobs/6789014",
+      "data_compliance": [],
+      "internal_job_id": 5544890,
+      "id": 6789014,
+      "location": { "name": "Dublin, Ireland" },
+      "metadata": [
+        {
+          "id": 1234,
+          "name": "Employment Type",
+          "value": "Contract",
+          "value_type": "single_select"
+        }
+      ],
+      "requisition_id": null,
+      "title": "Technical Program Manager, Compliance",
+      "updated_at": null,
+      "content": "&lt;p&gt;Coordinate the compliance programmes that keep Stripe licensed in the markets it operates in.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;6+ years in programme management inside a regulated business.&lt;/li&gt;&lt;li&gt;Comfort writing for auditors and for engineers in the same week.&lt;/li&gt;&lt;/ul&gt;",
+      "departments": [
+        { "id": 55, "name": "Operations", "parent_id": null, "child_ids": [] },
+        { "id": 56, "name": null, "parent_id": 55, "child_ids": [] }
+      ],
+      "offices": [
+        {
+          "id": 3,
+          "name": "Dublin",
+          "location": "Dublin, Ireland",
+          "parent_id": null,
+          "child_ids": []
+        }
+      ]
+    },
+    {
+      "absolute_url": "https://boards.greenhouse.io/stripe/jobs/6789015",
+      "data_compliance": [],
+      "internal_job_id": 5544891,
+      "id": 6789015,
+      "location": { "name": "Multiple Locations" },
+      "metadata": [],
+      "requisition_id": "JR-2026-4600",
+      "title": "Recruiting Coordinator",
+      "updated_at": "2026-08-20T14:00:00-04:00",
+      "content": "",
+      "departments": [{ "id": 70, "name": "People", "parent_id": null, "child_ids": [] }],
+      "offices": []
+    }
+  ],
+  "meta": { "total": 214 }
+}

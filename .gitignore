@@ -1,0 +1,37 @@
+# --- secrets ---------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- python ----------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.import_linter_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# --- node ------------------------------------------------------------
+node_modules/
+frontend/dist/
+
+# --- runtime artefacts ------------------------------------------------
+artifacts/
+exports/
+*.log
+
+# --- editors / os -----------------------------------------------------
+.DS_Store
+.idea/
+.vscode/

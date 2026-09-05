@@ -1,0 +1,460 @@
+# Scout Careers — seed registry (COMPANY_REGISTRY.md §9)
+#
+# Loaded by `scout-careers seed companies`. Idempotent on `slug` and on
+# (company_id, adapter, config): re-running inserts what is missing and edits
+# nothing the operator has since changed.
+#
+# Scope, deliberately: every row here is a board on one of the three ATSs Phase 1
+# can actually fetch — Greenhouse, Lever, Ashby. The employers §9 lists whose
+# boards are Workday, SmartRecruiters or bespoke (Adobe, Nvidia, Salesforce,
+# Flipkart, Zoho, Zerodha, the govtech non-profits) are deliberately absent:
+# seeding a company whose adapter does not exist yet creates a source that fails
+# every night, which is the opposite of a useful registry. They are added by the
+# phase that ships their adapter, or by hand with no source at all — a company
+# with zero sources is a fully valid registry row (§2.5c).
+#
+# No row is on a NEVER_FETCH_HOSTS host, and none can be: those hosts have no
+# adapter, and `assert_fetch_allowed` would refuse them anyway.
+#
+# `tier` is the operator's judgement about where scarce attention goes, so it is
+# marked honestly: a handful of `dream`, more `strong`, the rest `volume`. A
+# registry where everything is `dream` carries no information (§3.1).
+#
+# The board identifiers are what the employer publishes today. Boards move. The
+# first discovery run records the truth in `source.last_status`, and a token that
+# has moved shows up as `http_error` / `adapter.board_not_found` in
+# `scout-careers runs show` rather than as silence.
+
+companies:
+  # ---------------------------------------------------------------- greenhouse
+  - name: Stripe
+    slug: stripe
+    adapter: greenhouse
+    config: { board_token: stripe }
+    tier: dream
+    careers_url: https://boards.greenhouse.io/stripe
+    website: https://stripe.com
+    hq_location: South San Francisco, US
+    tags: [sector:fintech, stage:private-large, geo:bengaluru, role:backend]
+
+  - name: Databricks
+    slug: databricks
+    adapter: greenhouse
+    config: { board_token: databricks }
+    tier: dream
+    careers_url: https://boards.greenhouse.io/databricks
+    website: https://databricks.com
+    hq_location: San Francisco, US
+    tags: [sector:devtools, stage:private-large, geo:bengaluru, role:ai-platform]
+
+  - name: Anthropic
+    slug: anthropic
+    adapter: greenhouse
+    config: { board_token: anthropic }
+    tier: dream
+    careers_url: https://job-boards.greenhouse.io/anthropic
+    website: https://anthropic.com
+    hq_location: San Francisco, US
+    tags: [sector:ai-research, stage:private-large, role:ai-product]
+
+  - name: Confluent
+    slug: confluent
+    adapter: greenhouse
+    config: { board_token: confluent }
+    tier: strong
+    careers_url: https://boards.greenhouse.io/confluent
+    website: https://confluent.io
+    hq_location: Mountain View, US
+    tags: [sector:devtools, stage:public, geo:bengaluru, role:backend]
+
+  - name: MongoDB
+    slug: mongodb
+    adapter: greenhouse
+    config: { board_token: mongodb }
+    tier: strong
+    careers_url: https://boards.greenhouse.io/mongodb
+    website: https://mongodb.com
+    hq_location: New York, US
+    tags: [sector:devtools, stage:public, geo:delhi-ncr, role:backend]
+
+  - name: Elastic
+    slug: elastic
+    adapter: greenhouse
+    config: { board_token: elastic }
+    tier: strong
+    careers_url: https://boards.greenhouse.io/elastic
+    website: https://elastic.co
+    hq_location: Amsterdam, NL
+    tags: [sector:devtools, stage:public, geo:remote-india, role:backend]
+
+  - name: GitLab
+    slug: gitlab
+    adapter: greenhouse
+    config: { board_token: gitlab }
+    tier: strong
+    careers_url: https://boards.greenhouse.io/gitlab
+    website: https://about.gitlab.com
+    hq_location: Remote
+    tags: [sector:devtools, stage:public, geo:remote-global, role:backend]
+
+  - name: Cloudflare
+    slug: cloudflare
+    adapter: greenhouse
+    config: { board_token: cloudflare }
+    tier: strong
+    careers_url: https://boards.greenhouse.io/cloudflare
+    website: https://cloudflare.com
+    hq_location: San Francisco, US
+    tags: [sector:devtools, stage:public, geo:india, role:backend]
+
+  - name: Twilio
+    slug: twilio
+    adapter: greenhouse
+    config: { board_token: twilio }
+    tier: strong
+    careers_url: https://boards.greenhouse.io/twilio
+    website: https://twilio.com
+    hq_location: San Francisco, US
+    tags: [sector:saas, stage:public, geo:bengaluru, role:backend]
+
+  - name: Postman
+    slug: postman
+    adapter: greenhouse
+    config: { board_token: postman }
+    tier: strong
+    careers_url: https://boards.greenhouse.io/postman
+    website: https://postman.com
+    hq_location: San Francisco, US
+    tags: [sector:devtools, stage:series-c-plus, geo:bengaluru, role:backend]
+
+  - name: Figma
+    slug: figma
+    adapter: greenhouse
+    config: { board_token: figma }
+    tier: strong
+    careers_url: https://boards.greenhouse.io/figma
+    website: https://figma.com
+    hq_location: San Francisco, US
+    tags: [sector:saas, stage:public, role:product-management]
+
+  - name: Coinbase
+    slug: coinbase
+    adapter: greenhouse
+    config: { board_token: coinbase }
+    tier: volume
+    careers_url: https://boards.greenhouse.io/coinbase
+    website: https://coinbase.com
+    hq_location: Remote
+    tags: [sector:fintech, stage:public, geo:remote-global]
+
+  - name: DoorDash
+    slug: doordash
+    adapter: greenhouse
+    config: { board_token: doordash }
+    tier: volume
+    careers_url: https://boards.greenhouse.io/doordash
+    website: https://doordash.com
+    hq_location: San Francisco, US
+    tags: [sector:logistics, stage:public]
+
+  - name: Dropbox
+    slug: dropbox
+    adapter: greenhouse
+    config: { board_token: dropbox }
+    tier: volume
+    careers_url: https://boards.greenhouse.io/dropbox
+    website: https://dropbox.com
+    hq_location: Remote
+    tags: [sector:saas, stage:public, geo:remote-global]
+
+  - name: Reddit
+    slug: reddit
+    adapter: greenhouse
+    config: { board_token: reddit }
+    tier: volume
+    careers_url: https://boards.greenhouse.io/reddit
+    website: https://redditinc.com
+    hq_location: San Francisco, US
+    tags: [sector:media, stage:public]
+
+  - name: Discord
+    slug: discord
+    adapter: greenhouse
+    config: { board_token: discord }
+    tier: volume
+    careers_url: https://boards.greenhouse.io/discord
+    website: https://discord.com
+    hq_location: San Francisco, US
+    tags: [sector:media, stage:private-large]
+
+  - name: Pinterest
+    slug: pinterest
+    adapter: greenhouse
+    config: { board_token: pinterest }
+    tier: volume
+    careers_url: https://boards.greenhouse.io/pinterest
+    website: https://pinterest.com
+    hq_location: San Francisco, US
+    tags: [sector:media, stage:public]
+
+  - name: Airbnb
+    slug: airbnb
+    adapter: greenhouse
+    config: { board_token: airbnb }
+    tier: volume
+    careers_url: https://boards.greenhouse.io/airbnb
+    website: https://airbnb.com
+    hq_location: San Francisco, US
+    tags: [sector:ecommerce, stage:public, geo:delhi-ncr]
+
+  - name: Instacart
+    slug: instacart
+    adapter: greenhouse
+    config: { board_token: instacart }
+    tier: volume
+    careers_url: https://boards.greenhouse.io/instacart
+    website: https://instacart.com
+    hq_location: Remote
+    tags: [sector:ecommerce, stage:public]
+
+  - name: Robinhood
+    slug: robinhood
+    adapter: greenhouse
+    config: { board_token: robinhood }
+    tier: volume
+    careers_url: https://boards.greenhouse.io/robinhood
+    website: https://robinhood.com
+    hq_location: Menlo Park, US
+    tags: [sector:fintech, stage:public]
+
+  - name: Affirm
+    slug: affirm
+    adapter: greenhouse
+    config: { board_token: affirm }
+    tier: volume
+    careers_url: https://boards.greenhouse.io/affirm
+    website: https://affirm.com
+    hq_location: Remote
+    tags: [sector:fintech, stage:public, geo:remote-global]
+
+  - name: Plaid
+    slug: plaid
+    adapter: greenhouse
+    config: { board_token: plaid }
+    tier: volume
+    careers_url: https://boards.greenhouse.io/plaid
+    website: https://plaid.com
+    hq_location: San Francisco, US
+    tags: [sector:fintech, stage:private-large]
+
+  # --------------------------------------------------------------------- lever
+  - name: Netflix
+    slug: netflix
+    adapter: lever
+    config: { site: netflix }
+    tier: strong
+    careers_url: https://jobs.lever.co/netflix
+    website: https://netflix.com
+    hq_location: Los Gatos, US
+    tags: [sector:media, stage:public, geo:mumbai]
+
+  - name: Palantir Technologies
+    slug: palantir
+    adapter: lever
+    config: { site: palantir }
+    tier: strong
+    careers_url: https://jobs.lever.co/palantir
+    website: https://palantir.com
+    hq_location: Denver, US
+    tags: [sector:enterprise-software, stage:public, role:solutions]
+
+  - name: Atlan
+    slug: atlan
+    adapter: lever
+    config: { site: atlan }
+    tier: strong
+    careers_url: https://jobs.lever.co/atlan
+    website: https://atlan.com
+    hq_location: Singapore
+    tags: [sector:devtools, stage:series-b, geo:delhi-ncr, role:data]
+
+  - name: BrowserStack
+    slug: browserstack
+    adapter: lever
+    config: { site: browserstack }
+    tier: strong
+    careers_url: https://jobs.lever.co/browserstack
+    website: https://browserstack.com
+    hq_location: Mumbai, IN
+    tags: [sector:devtools, stage:series-c-plus, geo:mumbai, role:backend]
+
+  - name: CRED
+    slug: cred
+    adapter: lever
+    config: { site: cred }
+    tier: strong
+    careers_url: https://jobs.lever.co/cred
+    website: https://cred.club
+    hq_location: Bengaluru, IN
+    tags: [sector:fintech, stage:series-c-plus, geo:bengaluru, role:backend]
+
+  - name: Swiggy
+    slug: swiggy
+    adapter: lever
+    config: { site: swiggy }
+    tier: volume
+    careers_url: https://jobs.lever.co/swiggy
+    website: https://swiggy.com
+    hq_location: Bengaluru, IN
+    tags: [sector:logistics, stage:public, geo:bengaluru, role:backend]
+
+  - name: Groww
+    slug: groww
+    adapter: lever
+    config: { site: groww }
+    tier: volume
+    careers_url: https://jobs.lever.co/groww
+    website: https://groww.in
+    hq_location: Bengaluru, IN
+    tags: [sector:fintech, stage:series-c-plus, geo:bengaluru, role:backend]
+
+  - name: Quora
+    slug: quora
+    adapter: lever
+    config: { site: quora }
+    tier: volume
+    careers_url: https://jobs.lever.co/quora
+    website: https://quora.com
+    hq_location: Remote
+    tags: [sector:media, stage:private-large, geo:remote-global]
+
+  # --------------------------------------------------------------------- ashby
+  - name: OpenAI
+    slug: openai
+    adapter: ashby
+    config: { board_name: openai, include_compensation: true }
+    tier: dream
+    careers_url: https://jobs.ashbyhq.com/openai
+    website: https://openai.com
+    hq_location: San Francisco, US
+    tags: [sector:ai-research, stage:private-large, role:ai-product]
+
+  - name: Cohere
+    slug: cohere
+    adapter: ashby
+    config: { board_name: cohere, include_compensation: true }
+    tier: strong
+    careers_url: https://jobs.ashbyhq.com/cohere
+    website: https://cohere.com
+    hq_location: Toronto, CA
+    tags: [sector:ai-research, stage:series-c-plus, role:ai-platform]
+
+  - name: Perplexity
+    slug: perplexity
+    adapter: ashby
+    config: { board_name: perplexity.ai, include_compensation: true }
+    tier: strong
+    careers_url: https://jobs.ashbyhq.com/perplexity.ai
+    website: https://perplexity.ai
+    hq_location: San Francisco, US
+    tags: [sector:ai-research, stage:series-c-plus, role:ai-product]
+
+  - name: ElevenLabs
+    slug: elevenlabs
+    adapter: ashby
+    config: { board_name: elevenlabs, include_compensation: true }
+    tier: strong
+    careers_url: https://jobs.ashbyhq.com/elevenlabs
+    website: https://elevenlabs.io
+    hq_location: Remote
+    tags: [sector:ai-research, stage:series-c-plus, geo:remote-global, role:ai-platform]
+
+  - name: Hugging Face
+    slug: huggingface
+    adapter: ashby
+    config: { board_name: huggingface, include_compensation: true }
+    tier: strong
+    careers_url: https://jobs.ashbyhq.com/huggingface
+    website: https://huggingface.co
+    hq_location: Remote
+    tags: [sector:devtools, sector:ai-research, geo:remote-global, role:ai-platform]
+
+  - name: Anysphere (Cursor)
+    slug: anysphere
+    adapter: ashby
+    config: { board_name: anysphere, include_compensation: true }
+    tier: strong
+    careers_url: https://jobs.ashbyhq.com/anysphere
+    website: https://cursor.com
+    hq_location: San Francisco, US
+    tags: [sector:devtools, stage:series-c-plus, role:ai-platform]
+
+  - name: Vercel
+    slug: vercel
+    adapter: ashby
+    config: { board_name: vercel, include_compensation: true }
+    tier: strong
+    careers_url: https://jobs.ashbyhq.com/vercel
+    website: https://vercel.com
+    hq_location: Remote
+    tags: [sector:devtools, stage:series-c-plus, geo:remote-global, role:backend]
+
+  - name: Notion
+    slug: notion
+    adapter: ashby
+    config: { board_name: notion, include_compensation: true }
+    tier: strong
+    careers_url: https://jobs.ashbyhq.com/notion
+    website: https://notion.so
+    hq_location: San Francisco, US
+    tags: [sector:saas, stage:private-large, geo:india]
+
+  - name: Ramp
+    slug: ramp
+    adapter: ashby
+    config: { board_name: ramp, include_compensation: true }
+    tier: volume
+    careers_url: https://jobs.ashbyhq.com/ramp
+    website: https://ramp.com
+    hq_location: New York, US
+    tags: [sector:fintech, stage:series-c-plus]
+
+  - name: Linear
+    slug: linear
+    adapter: ashby
+    config: { board_name: linear, include_compensation: true }
+    tier: volume
+    careers_url: https://jobs.ashbyhq.com/linear
+    website: https://linear.app
+    hq_location: Remote
+    tags: [sector:devtools, stage:series-b, geo:remote-global]
+
+  - name: PostHog
+    slug: posthog
+    adapter: ashby
+    config: { board_name: posthog, include_compensation: true }
+    tier: volume
+    careers_url: https://jobs.ashbyhq.com/posthog
+    website: https://posthog.com
+    hq_location: Remote
+    tags: [sector:devtools, stage:series-c-plus, geo:remote-global, role:data]
+
+  - name: Supabase
+    slug: supabase
+    adapter: ashby
+    config: { board_name: supabase, include_compensation: true }
+    tier: volume
+    careers_url: https://jobs.ashbyhq.com/supabase
+    website: https://supabase.com
+    hq_location: Remote
+    tags: [sector:devtools, stage:series-c-plus, geo:remote-global, role:backend]
+
+  - name: Replit
+    slug: replit
+    adapter: ashby
+    config: { board_name: replit, include_compensation: true }
+    tier: volume
+    careers_url: https://jobs.ashbyhq.com/replit
+    website: https://replit.com
+    hq_location: Remote
+    tags: [sector:devtools, stage:series-c-plus, role:ai-platform]

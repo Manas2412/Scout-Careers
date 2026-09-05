@@ -1,0 +1,101 @@
+[
+  {
+    "id": "6f1a2c8e-4b7d-4a11-9d2e-0f3a5b6c7d8e",
+    "text": "Senior Software Engineer, Streaming Platform",
+    "hostedUrl": "https://jobs.lever.co/netflix/6f1a2c8e-4b7d-4a11-9d2e-0f3a5b6c7d8e",
+    "applyUrl": "https://jobs.lever.co/netflix/6f1a2c8e-4b7d-4a11-9d2e-0f3a5b6c7d8e/apply",
+    "createdAt": 1787824800000,
+    "workplaceType": "hybrid",
+    "categories": {
+      "commitment": "Full-time",
+      "department": "Engineering",
+      "team": "Streaming Platform",
+      "location": "Bengaluru, India",
+      "allLocations": ["Bengaluru, India", "Remote - India", "Mumbai, India"]
+    },
+    "description": "<p>Netflix is one of the world's leading entertainment services. The Streaming Platform team owns the services that put a title on a screen in under two seconds.</p>",
+    "descriptionPlain": "Netflix is one of the world's leading entertainment services. The Streaming Platform team owns the services that put a title on a screen in under two seconds.",
+    "lists": [
+      {
+        "text": "What you will do",
+        "content": "<li>Design and operate services handling millions of requests per second.</li><li>Work in Java and Kotlin on the playback control plane.</li><li>Partner with the client teams on end-to-end latency.</li>"
+      },
+      {
+        "text": "What we are looking for",
+        "content": "<li>7+ years building distributed systems in production.</li><li>Deep familiarity with the JVM and its performance characteristics.</li><li>Experience running what you build, including participating in on-call.</li>"
+      }
+    ],
+    "additional": "<p>Netflix is an equal opportunity employer and we celebrate the diversity of our teams.</p>",
+    "additionalPlain": "Netflix is an equal opportunity employer and we celebrate the diversity of our teams."
+  },
+  {
+    "id": "a1b2c3d4-5e6f-4708-9a0b-1c2d3e4f5061",
+    "text": "Staff Data Engineer, Content Analytics",
+    "hostedUrl": "https://jobs.lever.co/netflix/a1b2c3d4-5e6f-4708-9a0b-1c2d3e4f5061",
+    "applyUrl": "https://jobs.lever.co/netflix/a1b2c3d4-5e6f-4708-9a0b-1c2d3e4f5061/apply",
+    "createdAt": 1786343400000,
+    "workplaceType": "remote",
+    "categories": {
+      "commitment": "Full-time",
+      "department": "Data Science and Engineering",
+      "team": null,
+      "location": "Remote - India",
+      "allLocations": ["Remote - India"]
+    },
+    "description": "<p>Content Analytics tells the studio what worked. The data has to be right.</p>",
+    "descriptionPlain": "Content Analytics tells the studio what worked. The data has to be right.",
+    "lists": [
+      {
+        "text": "Requirements",
+        "content": "<li>8+ years in data engineering, including ownership of a warehouse model.</li><li>Fluency in Python, SQL and Spark.</li><li>Experience with Iceberg, Delta or an equivalent table format.</li>"
+      }
+    ],
+    "additional": null,
+    "additionalPlain": null
+  },
+  {
+    "id": "9c8b7a65-4321-4fed-8cba-098765432100",
+    "text": "Engineering Manager, Payments",
+    "hostedUrl": "https://jobs.lever.co/netflix/9c8b7a65-4321-4fed-8cba-098765432100",
+    "applyUrl": "https://jobs.lever.co/netflix/9c8b7a65-4321-4fed-8cba-098765432100/apply",
+    "createdAt": 1784116800000,
+    "workplaceType": "onsite",
+    "categories": {
+      "commitment": "Full-time",
+      "department": "Engineering",
+      "team": "Payments",
+      "location": "Amsterdam, Netherlands",
+      "allLocations": ["Amsterdam, Netherlands"]
+    },
+    "description": "<p>Lead the team that keeps member payments working in 190 countries.</p>",
+    "descriptionPlain": "Lead the team that keeps member payments working in 190 countries.",
+    "lists": [
+      {
+        "text": "What we are looking for",
+        "content": "<li>3+ years managing engineers, on top of a strong engineering background.</li><li>Experience with payment service providers and settlement.</li>"
+      }
+    ],
+    "additional": "<p>We are an equal opportunity employer.</p>",
+    "additionalPlain": "We are an equal opportunity employer."
+  },
+  {
+    "id": "deadbeef-0000-4000-8000-00000000feed",
+    "text": "Production Assistant (Temporary)",
+    "hostedUrl": "https://jobs.lever.co/netflix/deadbeef-0000-4000-8000-00000000feed",
+    "applyUrl": "https://jobs.lever.co/netflix/deadbeef-0000-4000-8000-00000000feed/apply",
+    "createdAt": 1785542400000,
+    "workplaceType": "onsite",
+    "categories": {
+      "commitment": "Temporary",
+      "department": "Studio Operations",
+      "team": null,
+      "location": "Mumbai, India",
+      "allLocations": ["Mumbai, India"]
+    },
+    "description": "",
+    "descriptionPlain": "",
+    "lists": [],
+    "additional": null,
+    "additionalPlain": null
+  }
+]
