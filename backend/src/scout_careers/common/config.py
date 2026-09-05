@@ -17,12 +17,13 @@ must list Phase 1 keys and nothing else.
 
 from __future__ import annotations
 
+from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, ClassVar, Literal
 
 from pydantic import Field, PostgresDsn, RedisDsn, SecretStr, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from scout_careers.common.errors import ConfigError
 
@@ -107,6 +108,108 @@ class Settings(BaseSettings):
     # mis-attributes — and a mis-attributed posting is worse, because it is
     # invisible: it looks like a real role at a company being tracked.
     alert_company_match_threshold: Annotated[float, Field(ge=0.0, le=1.0)] = 0.45
+
+    # ---- stage ④, the deterministic filter (CONFIGURATION.md §8) ------
+    # Zero model calls, and the reason the cost model works at all: it removes
+    # the large majority of postings before a token is spent. Tightening
+    # `default_location_filter` is the first lever on LLM cost — it saves more
+    # per day than the entire daily budget.
+    # `NoDecode` is load-bearing. Without it `pydantic-settings` JSON-decodes
+    # a `list[str]` inside the dotenv source, *before* any validator runs, and
+    # `IN,Remote` dies as "Expecting value: line 1 column 1" — an error that
+    # names neither the key nor the expected format. It suppresses that decode
+    # so the string reaches `_split_comma_list` below.
+    default_location_filter: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["IN", "Remote"]
+    )
+    # Measured, not guessed. The first version of this list was written before
+    # any postings existed and left `staff`, `principal` and `manager` passing —
+    # 2,340 roles on the live corpus that six months of full-time experience
+    # cannot reach.
+    filter_seniority_deny: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: [
+            "intern",
+            "staff",
+            "principal",
+            "manager",
+            "director",
+            "executive",
+        ]
+    )
+    # Every entry here was simulated against the live corpus and removed zero
+    # engineering roles. `marketing` and `audit` were candidates and are
+    # deliberately absent: they name an *org*, not a role, and one in four of
+    # what they removed was a backend job serving that org — "Senior Software
+    # Engineer, Marketing Platform Tooling", "Full Stack Engineer - Internal
+    # Audit". `solutions architect` and `strategist` are also absent; each cost
+    # a role worth seeing, including Palantir's Forward Deployed Strategist.
+    filter_keyword_deny: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: [
+            "sales",
+            "recruiter",
+            "teacher",
+            "nurse",
+            "driver",
+            "warehouse",
+            "account executive",
+            "counsel",
+            "customer success",
+            "technical support",
+        ]
+    )
+    # Years of experience a job description may demand before the role is out
+    # of reach. Compared against the *least* demanding figure the description
+    # states, so a role wanting "8+ years overall, 3+ with Go" is kept. A
+    # description stating nothing passes. 0 disables the predicate.
+    #
+    # This reads what a role actually asks for, which a title deny-list cannot:
+    # "Senior Software Engineer" means two years at one employer and ten at
+    # another, and no list of words can tell those apart.
+    filter_max_years_experience: Annotated[int, Field(ge=0, le=30)] = 5
+    # Off, and it should stay off: a two-line mail-alert snippet yields garbage
+    # requirements, and garbage requirements produce a confident, wrong
+    # coverage score — worse than no score at all.
+    alert_fidelity_extract: bool = False
+
+    # ---- LLM provider and model pinning (CONFIGURATION.md §5.1) -------
+    llm_provider: Literal["bedrock", "azure_openai"] = "bedrock"
+    # Aliases, not IDs, cross the service interface: code asks for `fast` or
+    # `strong` and the router resolves it (AI_ARCHITECTURE.md §4). `fast` does
+    # extraction, coverage judgement and mail classification; `strong` does
+    # judgement and composition, where a worse answer costs more than the token
+    # difference.
+    llm_model_fast: str = "anthropic.claude-3-5-haiku-20241022-v1:0"
+    llm_model_strong: str = "anthropic.claude-sonnet-4-20250514-v1:0"
+    llm_max_concurrency: Annotated[int, Field(ge=1, le=16)] = 4
+
+    # ---- Bedrock credentials (CONFIGURATION.md §5.2) ------------------
+    aws_region: str = "ap-south-1"
+    # Omitted when an instance role is available; boto3 walks its own chain and
+    # needs no code change. SecretStr so the value cannot reach a log line or an
+    # error message by accident (ARCHITECTURE.md §3 invariant 6).
+    aws_access_key_id: SecretStr | None = None
+    aws_secret_access_key: SecretStr | None = None
+    bedrock_endpoint_url: str | None = None
+
+    # ---- cost and the budget breaker (CONFIGURATION.md §5.4) ----------
+    # Cost is computed from the `usage` block on every response, never
+    # estimated; only the FX rate and the per-million prices are configured.
+    llm_daily_budget_inr: Annotated[Decimal, Field(gt=0)] = Decimal("80")
+    llm_budget_warn_pct: Annotated[int, Field(ge=1, le=100)] = 80
+    llm_inr_per_usd: Annotated[Decimal, Field(gt=0)] = Decimal("88")
+    llm_price_fast_in: Annotated[Decimal, Field(ge=0)] = Decimal("0.80")
+    llm_price_fast_out: Annotated[Decimal, Field(ge=0)] = Decimal("4.00")
+    llm_price_strong_in: Annotated[Decimal, Field(ge=0)] = Decimal("3.00")
+    llm_price_strong_out: Annotated[Decimal, Field(ge=0)] = Decimal("15.00")
+
+    # ---- prompt bounds and caching (CONFIGURATION.md §5.5) ------------
+    # Also the bound on the cost attack: a 400,000-token job description is a
+    # bill, and truncating from the head keeps requirements and drops benefits
+    # boilerplate.
+    extraction_max_jd_tokens: Annotated[int, Field(ge=100)] = 4_000
+    letter_max_jd_tokens: Annotated[int, Field(ge=100)] = 900
+    llm_cache_enabled: bool = True
+    llm_request_timeout_multiplier: Annotated[float, Field(ge=1.0, le=3.0)] = 1.0
 
     # ---- scheduler ----------------------------------------------------
     run_wall_clock_budget_s: Annotated[int, Field(ge=1)] = 900
@@ -253,6 +356,61 @@ class Settings(BaseSettings):
             An absolute path.
         """
         return value if value.is_absolute() else (REPO_ROOT / value)
+
+    #: Spellings that mean "whatever is newest". CONFIGURATION.md §5.1 forbids
+    #: all of them: a silently upgraded model invalidates every eval result and
+    #: every ``artifact.model`` provenance record without a deploy having
+    #: happened, which is invariant 7 — no artifact whose model cannot be named.
+    _UNPINNED_MARKERS: ClassVar[tuple[str, ...]] = ("-latest", ":latest", "-v1:latest")
+
+    @field_validator(
+        "default_location_filter",
+        "filter_seniority_deny",
+        "filter_keyword_deny",
+        mode="before",
+    )
+    @classmethod
+    def _split_comma_list(cls, value: object) -> object:
+        """Parse ``IN,Remote`` into a list.
+
+        Args:
+            value: Whatever the environment or a default supplied.
+
+        Returns:
+            A list of trimmed, non-empty entries when given a string; anything
+            else unchanged, so a default list passes through.
+
+        CONFIGURATION.md §4 specifies comma-separated lists. ``pydantic-settings``
+        would otherwise try to JSON-decode a ``list[str]`` field and reject
+        ``IN,Remote`` with a parse error that names neither the file nor the
+        expected format — a boot failure whose message points nowhere.
+        """
+        if isinstance(value, str):
+            return [entry.strip() for entry in value.split(",") if entry.strip()]
+        return value
+
+    @field_validator("llm_model_fast", "llm_model_strong", mode="after")
+    @classmethod
+    def _refuse_unpinned_model(cls, value: str) -> str:
+        """Refuse a model ID that can change under us.
+
+        Args:
+            value: The configured model ID.
+
+        Returns:
+            It, unchanged.
+
+        Raises:
+            ValueError: When the ID carries a floating-version marker.
+        """
+        lowered = value.strip().lower()
+        if any(marker in lowered for marker in cls._UNPINNED_MARKERS):
+            raise ValueError(
+                f"model IDs must be pinned; {value!r} names a floating version. "
+                "A model that changes without a deploy invalidates every eval "
+                "result and every artifact's provenance (CONFIGURATION.md §5.1)."
+            )
+        return value
 
     @model_validator(mode="after")
     def _boot_checks(self) -> Settings:

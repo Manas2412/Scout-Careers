@@ -187,14 +187,55 @@ async def test_redirect_to_a_permitted_host_is_followed(settings) -> None:
 # --------------------------------------------------------------------------
 
 
+#: Settings fields whose names contain a deny-ish word but which have nothing to
+#: do with invariant 4. Each is named individually, with its reason, so that a
+#: genuinely new host deny-list still trips the scan below and has to be argued
+#: for rather than quietly absorbed by a looser pattern.
+#:
+#: Invariant 4 is about *which hosts may be fetched*. These two are about which
+#: job postings are worth a model call — a preference the operator is supposed
+#: to tune, on a list whose worst outcome is a role they have to find manually.
+#: Nothing here can widen what the crawler is allowed to touch.
+DENY_NAMED_BUT_NOT_HOSTS: frozenset[str] = frozenset(
+    {
+        "filter_seniority_deny",
+        "filter_keyword_deny",
+    }
+)
+
+
 def test_no_settings_field_names_the_deny_list() -> None:
     suspicious = ("never_fetch", "deny", "denied", "blocklist", "blacklist", "allow_host")
     for field_name in Settings.model_fields:
+        if field_name in DENY_NAMED_BUT_NOT_HOSTS:
+            continue
         lowered = field_name.lower()
         assert not any(token in lowered for token in suspicious), (
             f"Settings.{field_name} looks like a configurable deny list; "
             "invariant 4 requires the list to be a code constant"
         )
+
+
+def test_the_exemptions_still_exist_and_still_hold_no_hosts() -> None:
+    """An exemption is a hole. Two things must stay true of each one.
+
+    It must name a field that exists — a stale entry is a hole with nothing
+    behind it, waiting to match a future field of the same name. And its value
+    must contain nothing host-shaped, because the exemption is granted on the
+    claim that these lists are about job titles and seniority bands, not about
+    what may be fetched.
+    """
+    settings = make_settings()
+    stale = sorted(DENY_NAMED_BUT_NOT_HOSTS - set(Settings.model_fields))
+    assert stale == [], f"exemptions for fields that no longer exist: {stale}"
+
+    for field_name in DENY_NAMED_BUT_NOT_HOSTS:
+        for entry in getattr(settings, field_name):
+            assert "." not in entry and "/" not in entry, (
+                f"Settings.{field_name} contains {entry!r}, which looks like a host. "
+                "This field is exempt from the invariant-4 scan on the basis that "
+                "it holds titles and bands; a host here voids that basis."
+            )
 
 
 def test_no_settings_value_carries_a_denied_host() -> None:

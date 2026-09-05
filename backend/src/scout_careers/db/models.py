@@ -1,14 +1,20 @@
-"""SQLAlchemy models — the Phase 1 subset of DATA_MODEL.md.
+"""SQLAlchemy models — the tables that have code reading and writing them.
 
-Four tables: ``company`` (§3.1), ``source`` (§3.2), ``job_posting`` (§4.1) and
-``run_log`` (§9.1). The remaining tables land with the phases that need them;
-the enum types they will reference are already created by migration 0001 where
-DATA_MODEL.md §2 puts them in Phase 1 scope.
+Phase 1: ``company`` (§3.1), ``source`` (§3.2), ``job_posting`` (§4.1),
+``run_log`` (§9.1). Phase 2's extraction-and-scoring slice adds
+``resume_variant`` (§5.1), ``requirement`` (§4.2) and ``match_score`` (§6.1).
+
+Absent on purpose, though fully specified in DATA_MODEL.md: ``claim``,
+``claim_usage``, ``review_item``, ``application``, ``application_event``,
+``artifact`` and ``email_message``. ROADMAP.md §3.2 defers the ledger, document
+generation and the review queue out of Phase 2, and a model with no code behind
+it is an invitation to write against a table that does not exist yet.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -21,6 +27,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    Numeric,
     Text,
     UniqueConstraint,
     text,
@@ -28,11 +35,23 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TIMESTAMP, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from scout_careers.common.types import AtsType, CompanyStatus, CompanyTier, RunStatus
+from scout_careers.common.types import (
+    AtsType,
+    CompanyStatus,
+    CompanyTier,
+    CoverageLevel,
+    RequirementKind,
+    RunStatus,
+)
 from scout_careers.db.base import Base, TimestampMixin
 
 
-def _pg_enum(enum_cls: type[AtsType | CompanyTier | CompanyStatus | RunStatus], name: str) -> Enum:
+def _pg_enum(
+    enum_cls: type[
+        AtsType | CompanyTier | CompanyStatus | RunStatus | RequirementKind | CoverageLevel
+    ],
+    name: str,
+) -> Enum:
     """Bind a Python StrEnum to a native Postgres enum type.
 
     ``values_callable`` makes SQLAlchemy persist the *value* (``"mail_alert"``)
@@ -209,6 +228,12 @@ class JobPosting(TimestampMixin, Base):
 
     company: Mapped[Company] = relationship(back_populates="postings")
     source: Mapped[Source] = relationship(back_populates="postings")
+    requirements: Mapped[list[Requirement]] = relationship(
+        back_populates="posting", cascade="all, delete-orphan", passive_deletes=True
+    )
+    scores: Mapped[list[MatchScore]] = relationship(
+        back_populates="posting", cascade="all, delete-orphan", passive_deletes=True
+    )
 
     __table_args__ = (
         UniqueConstraint("source_id", "external_id", name="job_posting_source_external_key"),
@@ -250,4 +275,156 @@ class RunLog(Base):
     __table_args__ = (Index("run_log_recent_idx", "run_type", text("started_at DESC")),)
 
 
-__all__ = ["Company", "JobPosting", "RunLog", "Source"]
+class ResumeVariant(TimestampMixin, Base):
+    """One resume, structured. DATA_MODEL.md §5.1.
+
+    ``content`` mirrors what the ``.docx`` builder already consumes, so a
+    variant renders without a translation layer. ``skill_set`` is the flattened,
+    normalised vocabulary that ``requirement.normalised_skill`` is matched
+    against — the thing that lets coverage be computed with no second model
+    call.
+    """
+
+    __tablename__ = "resume_variant"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    key: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    target: Mapped[str] = mapped_column(Text, nullable=False)
+    content: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    skill_set: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=text("'{}'")
+    )
+    source_path: Mapped[str | None] = mapped_column(Text)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    deleted_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+    scores: Mapped[list[MatchScore]] = relationship(
+        back_populates="variant", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+    __table_args__ = (Index("resume_variant_skills_idx", "skill_set", postgresql_using="gin"),)
+
+
+class Requirement(Base):
+    """One extracted line of a job description. DATA_MODEL.md §4.2.
+
+    No ``updated_at``: a requirement is not edited. A re-extraction under a new
+    prompt replaces the set for that posting, and ``extracted_at`` with
+    ``model`` and ``prompt_version`` says which pass produced it.
+    """
+
+    __tablename__ = "requirement"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    posting_id: Mapped[str] = mapped_column(
+        CHAR(26), ForeignKey("job_posting.id", ondelete="CASCADE"), nullable=False
+    )
+    kind: Mapped[RequirementKind] = mapped_column(
+        _pg_enum(RequirementKind, "requirement_kind"), nullable=False
+    )
+    # The column is `text`; the attribute cannot be. `text` is SQLAlchemy's
+    # own function, imported at module scope and used a few lines below for
+    # `server_default`. A class-body assignment named `text` would shadow it
+    # for the rest of this class body and the next use would fail at import
+    # time — so the attribute takes the underscore and the column keeps the
+    # documented name.
+    text_: Mapped[str] = mapped_column("text", Text, nullable=False)
+    normalised_skill: Mapped[str | None] = mapped_column(Text)
+    weight: Mapped[Decimal] = mapped_column(
+        Numeric(3, 2), nullable=False, server_default=text("1.00")
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    extracted_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
+    )
+    # Invariant 7: nothing this system produces may be unable to name the model
+    # and prompt that produced it.
+    model: Mapped[str] = mapped_column(Text, nullable=False)
+    prompt_version: Mapped[str] = mapped_column(Text, nullable=False)
+
+    posting: Mapped[JobPosting] = relationship(back_populates="requirements")
+
+    __table_args__ = (
+        Index("requirement_posting_idx", "posting_id", "kind"),
+        Index("requirement_skill_idx", "normalised_skill"),
+    )
+
+
+class MatchScore(Base):
+    """One posting scored against one variant. DATA_MODEL.md §6.1.
+
+    There is deliberately no ``selection_probability``. MATCH_SCORING.md §7 is
+    the argument; the short form is that the number cannot be computed from
+    anything this system observes, and a fabricated one would be the most
+    trusted number on the page.
+    """
+
+    __tablename__ = "match_score"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    posting_id: Mapped[str] = mapped_column(
+        CHAR(26), ForeignKey("job_posting.id", ondelete="CASCADE"), nullable=False
+    )
+    variant_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("resume_variant.id", ondelete="CASCADE"), nullable=False
+    )
+    hard_met: Mapped[int] = mapped_column(Integer, nullable=False)
+    hard_total: Mapped[int] = mapped_column(Integer, nullable=False)
+    nice_met: Mapped[int] = mapped_column(Integer, nullable=False)
+    nice_total: Mapped[int] = mapped_column(Integer, nullable=False)
+    coverage_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    composite_score: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    # [{requirement_id, kind, text, level, note}] where `level` is a
+    # CoverageLevel. Named requirements, never categories — gate 2.8.
+    gaps: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    # At most one true per posting, enforced by the partial unique index
+    # `match_one_recommendation_idx` rather than by application code.
+    is_recommended: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    model: Mapped[str] = mapped_column(Text, nullable=False)
+    prompt_version: Mapped[str] = mapped_column(Text, nullable=False)
+    scored_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    posting: Mapped[JobPosting] = relationship(back_populates="scores")
+    variant: Mapped[ResumeVariant] = relationship(back_populates="scores")
+
+    __table_args__ = (
+        # prompt_version is in the key so a re-score under a new prompt lands
+        # beside the old row rather than destroying the comparison that shows
+        # whether the new prompt is an improvement.
+        UniqueConstraint(
+            "posting_id", "variant_id", "prompt_version", name="match_score_posting_variant_key"
+        ),
+        Index("match_posting_score_idx", "posting_id", text("composite_score DESC")),
+        Index(
+            "match_recommended_idx",
+            text("composite_score DESC"),
+            postgresql_where=text("is_recommended"),
+        ),
+        Index(
+            "match_one_recommendation_idx",
+            "posting_id",
+            unique=True,
+            postgresql_where=text("is_recommended"),
+        ),
+    )
+
+
+__all__ = [
+    "Company",
+    "JobPosting",
+    "MatchScore",
+    "Requirement",
+    "ResumeVariant",
+    "RunLog",
+    "Source",
+]

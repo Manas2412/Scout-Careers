@@ -403,8 +403,9 @@ Owned by `SOURCE_ADAPTERS.md`.
 | `INGEST_CLOSE_AFTER_MISSED_RUNS` | int | `2` | no | Consecutive runs a posting may be unseen before `closed_at` is set |
 | `ALERT_COMPANY_MATCH_THRESHOLD` | float | `0.45` | no | Trigram similarity a parsed mail-alert employer name must reach to be filed under a registered company (`SOURCE_ADAPTERS.md` §7.3). Below it the lead goes to the reserved `unmatched` company. Lowering it mis-attributes, which is worse than missing: a mis-filed lead is indistinguishable from a real role at a tracked employer |
 | `DEFAULT_LOCATION_FILTER` | list | `IN,Remote` | no | Stage-④ location gate applied where `company.location_filter` is empty. **Tightening this is the first lever on LLM cost** — the filter saves more per day than the entire daily budget |
-| `FILTER_SENIORITY_DENY` | list | `intern,director,executive` | no | Seniority values killed at stage ④ |
-| `FILTER_KEYWORD_DENY` | list | (see `.env.example`) | no | Title keywords killed at stage ④ |
+| `FILTER_SENIORITY_DENY` | list | `intern,staff,principal,manager,director,executive` | no | Seniority values killed at stage ④. Measured against the live corpus rather than assumed: the original `intern,director,executive` left `staff`, `principal` and `manager` passing, which is 2,340 roles a candidate with months rather than years cannot reach |
+| `FILTER_KEYWORD_DENY` | list | `sales,recruiter,teacher,nurse,driver,warehouse,account executive,counsel,customer success,technical support` | no | Title keywords killed at stage ④, whole-word against the **title only**. Most-specific entry wins, so a phrase names the reason rather than one of its words. Worth 1.1% of the kill rate — it catches obvious non-engineering titles and nothing else, because most such roles (Account Executive, Solutions Architect) contain no denied word at all |
+| `FILTER_MAX_YEARS_EXPERIENCE` | int 0–30 | `5` | no | Years of experience a description may demand before the role is out of reach, compared against the **least** demanding figure it states — so "8+ years overall, 3+ with Go" is kept and left to scoring. A description stating nothing passes and is surfaced with the figure recorded as unknown. `0` disables it. This reads what a role asks for, which no title list can: "Senior Software Engineer" means two years at one employer and ten at another |
 | `ALERT_FIDELITY_EXTRACT` | bool | `false` | no | Whether `fidelity: "low"` mail-alert postings are sent to extraction. **Off, and it should stay off**: a two-line snippet yields garbage requirements, and garbage requirements produce a confident, wrong coverage score |
 
 ---
@@ -729,8 +730,9 @@ MAX_RESPONSE_BYTES=20971520
 INGEST_CLOSE_AFTER_MISSED_RUNS=2
 ALERT_COMPANY_MATCH_THRESHOLD=0.45
 DEFAULT_LOCATION_FILTER=IN,Remote
-FILTER_SENIORITY_DENY=intern,director,executive
-FILTER_KEYWORD_DENY=sales,recruiter,teacher,nurse,driver,warehouse,firmware,rtos,device driver
+FILTER_SENIORITY_DENY=intern,staff,principal,manager,director,executive
+FILTER_KEYWORD_DENY=sales,recruiter,teacher,nurse,driver,warehouse,account executive,counsel,customer success,technical support
+FILTER_MAX_YEARS_EXPERIENCE=5
 ALERT_FIDELITY_EXTRACT=false
 
 # --- scoring ---------------------------------------------------------

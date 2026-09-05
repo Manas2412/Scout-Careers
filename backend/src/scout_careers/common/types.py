@@ -60,6 +60,36 @@ class RunStatus(StrEnum):
     FAILED = "failed"
 
 
+class RequirementKind(StrEnum):
+    """``requirement_kind``. What a line in a job description is.
+
+    The distinction that matters is HARD vs the rest: a missing hard
+    requirement is a reason not to apply, a missing nice-to-have is a sentence
+    in a cover letter. RESPONSIBILITY and TOOL are extracted but carry no
+    coverage weight — they describe the job rather than gate the candidate,
+    and scoring them would dilute the number the operator reads.
+    """
+
+    HARD = "hard"
+    NICE = "nice"
+    RESPONSIBILITY = "responsibility"
+    TOOL = "tool"
+
+
+class CoverageLevel(StrEnum):
+    """``coverage_level``. How well one variant answers one requirement.
+
+    PARTIAL exists so the scorer is not forced to lie in either direction:
+    "Kubernetes in production" against someone who has deployed to ECS is
+    neither met nor missing, and collapsing it either way produces a number
+    the operator learns to distrust.
+    """
+
+    MET = "met"
+    PARTIAL = "partial"
+    MISSING = "missing"
+
+
 class SourceStatus(StrEnum):
     """Per-source run outcome (SOURCE_ADAPTERS.md §10.2).
 
@@ -117,7 +147,9 @@ __all__ = [
     "AtsType",
     "CompanyStatus",
     "CompanyTier",
+    "CoverageLevel",
     "EmploymentType",
+    "RequirementKind",
     "RunStatus",
     "Seniority",
     "SourceStatus",

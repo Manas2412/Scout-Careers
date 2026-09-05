@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from scout_careers.common.config import DEFAULT_USER_AGENT, Settings, get_settings
+from scout_careers.common.config import DEFAULT_USER_AGENT, REPO_ROOT, Settings, get_settings
 from scout_careers.common.errors import ConfigError
 from tests.conftest import make_settings
 
@@ -131,18 +132,31 @@ def test_get_settings_is_cached() -> None:
         get_settings.cache_clear()
 
 
-def test_no_phase_two_keys_leaked_into_settings() -> None:
-    # extra="forbid" means .env may only carry keys declared here, so a stray
-    # LLM_/SCORING_/FF_ field would force those keys into .env.example early.
-    #
-    # `mail_` was on this list while Phase 1 shipped the alert adapter and no
-    # transport for it. Phase 1 now ships the Gmail reader, so MAIL_ENABLED,
-    # MAIL_TOKEN_PATH and MAIL_TOKEN_KEY are Phase 1 keys. The Phase 2 half of
-    # the module — the digest — is asserted absent below instead, by name,
-    # because that is the part whose arrival early would be a real leak.
-    prefixes = ("llm_", "scoring_", "generation_", "ledger_", "ff_", "export_")
+def test_no_unbuilt_phase_keys_leaked_into_settings() -> None:
+    """Configuration must not run ahead of the code that reads it.
+
+    ``extra="forbid"`` means every key in ``.env`` needs a field here, so a
+    field added early forces its key into ``.env.example`` early too — and an
+    operator then configures a capability that does not exist, which looks like
+    a bug in the capability rather than in the shipping order.
+
+    The list shrinks as phases land, and each removal is deliberate:
+
+    - ``mail_`` came off when Phase 1 shipped the Gmail reader.
+    - ``llm_`` came off when Phase 2's extraction-and-scoring slice began. The
+      provider layer is being built now, so ``LLM_PROVIDER``, the pinned model
+      IDs, the price table and the budget breaker are current keys.
+
+    What remains is genuinely unbuilt. ``scoring_`` stays on the list even
+    though scoring is in this slice: it comes off when the scoring code lands,
+    not when the work is planned, or the guard means nothing. ``generation_``,
+    ``ledger_`` and ``export_`` belong to Phase 3 and later — ROADMAP.md §3.2
+    explicitly defers the claims ledger, document generation and the export out
+    of Phase 2 — and ``ff_`` gates behaviour that has no code at all.
+    """
+    prefixes = ("scoring_", "generation_", "ledger_", "ff_", "export_")
     for field_name in Settings.model_fields:
-        assert not field_name.startswith(prefixes), f"{field_name} is not Phase 1"
+        assert not field_name.startswith(prefixes), f"{field_name} has no code that reads it"
 
 
 def test_no_send_side_mail_keys_exist_yet() -> None:
@@ -257,3 +271,98 @@ def test_the_token_path_is_the_same_from_any_working_directory(
     from_elsewhere = make_settings(mail_enabled=False, mail_token_path=".secrets/gmail.token")
 
     assert from_here.mail_token_path == from_elsewhere.mail_token_path
+
+
+# --------------------------------------------------------------------------
+# .env.example and Settings must not drift apart
+#
+# `extra="forbid"` makes this a boot failure, not a warning: a key in an env
+# file with no matching field takes down every CLI command with a validation
+# error naming a setting the operator never touched. Adding the Phase 2 LLM
+# block was exactly that risk — 21 new keys, all of which had to land in the
+# same change as their fields.
+#
+# The reverse direction is the documented contract: CONFIGURATION.md says
+# .env.example lists the keys, so a field added without one is a setting the
+# operator has no way to discover.
+# --------------------------------------------------------------------------
+
+ENV_EXAMPLE = REPO_ROOT / ".env.example"
+_ENV_LINE = re.compile(r"^(?P<key>[A-Z][A-Z0-9_]*)=")
+
+#: Read by Docker Compose rather than by the application, or otherwise not a
+#: settings field. Listed explicitly so the exemption is a decision.
+NOT_SETTINGS_KEYS: frozenset[str] = frozenset()
+
+
+def _example_keys() -> list[str]:
+    return [
+        match.group("key")
+        for line in ENV_EXAMPLE.read_text(encoding="utf-8").splitlines()
+        if (match := _ENV_LINE.match(line))
+    ]
+
+
+def test_the_example_file_exists_and_is_not_empty() -> None:
+    assert ENV_EXAMPLE.is_file()
+    assert _example_keys(), ".env.example lists no keys"
+
+
+def test_every_example_key_has_a_settings_field() -> None:
+    fields = set(Settings.model_fields)
+    unmatched = [k for k in _example_keys() if k.lower() not in fields | NOT_SETTINGS_KEYS]
+    assert unmatched == [], (
+        f"keys with no Settings field (extra='forbid' would refuse boot): {unmatched}"
+    )
+
+
+def test_no_settings_field_is_missing_from_the_example() -> None:
+    keys = {k.lower() for k in _example_keys()}
+    undocumented = sorted(f for f in Settings.model_fields if f not in keys)
+    assert undocumented == [], f"settings absent from .env.example: {undocumented}"
+
+
+#: Keys whose names contain a secret-ish word but which hold no secret. Named
+#: individually rather than loosening the pattern, so a genuinely new secret is
+#: still caught by default and an exemption is a decision someone made.
+NOT_ACTUALLY_SECRET: frozenset[str] = frozenset(
+    {
+        "EXTRACTION_MAX_JD_TOKENS",  # a token *count*
+        "LETTER_MAX_JD_TOKENS",  # a token count
+        "GMAIL_MAX_MESSAGES",
+        "MAIL_TOKEN_PATH",  # where the token lives, not the token
+        "GMAIL_CLIENT_SECRETS_PATH",  # likewise
+    }
+)
+
+#: Values that are placeholders rather than credentials.
+PLACEHOLDER_VALUES: frozenset[str] = frozenset({"", "scout", "changeme"})
+
+
+def test_the_example_ships_no_credentials() -> None:
+    """`.env.example` is committed, so every secret-bearing key must be empty.
+
+    The first version of this test matched any key containing ``TOKEN`` and
+    flagged ``EXTRACTION_MAX_JD_TOKENS`` — a token budget — as a leaked
+    credential. A check that cries wolf gets a wider exemption next time and
+    then catches nothing, so the false positives are named here instead.
+    """
+    secretish = ("SECRET", "PASSWORD", "TOKEN", "API_KEY", "ACCESS_KEY", "CLIENT_ID")
+    populated = []
+    for line in ENV_EXAMPLE.read_text(encoding="utf-8").splitlines():
+        match = _ENV_LINE.match(line)
+        if match is None:
+            continue
+        key = match.group("key")
+        if key in NOT_ACTUALLY_SECRET or not any(word in key for word in secretish):
+            continue
+        if line.split("=", 1)[1].strip() not in PLACEHOLDER_VALUES:
+            populated.append(key)
+    assert populated == [], f"credential-shaped keys with values in a committed file: {populated}"
+
+
+def test_the_exemption_list_does_not_cover_a_key_that_is_gone() -> None:
+    """An exemption for a key that no longer exists hides the next real one."""
+    keys = set(_example_keys())
+    stale = sorted(NOT_ACTUALLY_SECRET - keys)
+    assert stale == [], f"exemptions for keys not in .env.example: {stale}"
