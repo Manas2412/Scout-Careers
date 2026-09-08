@@ -47,6 +47,15 @@ VOCAB_PATH: Final[Path] = Path(__file__).resolve().parent / "vocab" / "skills.ya
 _NOISE = re.compile(r"[^\w+#/. ]+")
 _SPACES = re.compile(r"\s+")
 
+#: The words that turn a same-family list into "any one of these". Read by
+#: :meth:`Vocabulary.resolve_alternatives` and by nothing else.
+#:
+#: "or" carries the whole rule; the rest are the phrasings that surround it and
+#: the slash form ("AWS/GCP/Azure") that omits it. Deliberately absent: the bare
+#: comma. "Postgres, Redis, Kafka" is a stack, not a choice, and admitting the
+#: comma would score holding one of the three as holding all three.
+_DISJUNCTION = re.compile(r"\bor\b|\beither\b|\bany of\b|\bone of\b|/")
+
 
 def canonical_key(phrase: str) -> str:
     """Reduce a phrase to its lookup key.
@@ -206,13 +215,63 @@ class Vocabulary:
         Python is not a substitute for Java. Storing ``java`` on a line the
         operator satisfies with Python would score ``missing`` and invent a gap.
 
-        So a multi-token line resolves to nothing and stays an honest unmatched
-        requirement, which is the same answer it has today. Expressing "any of
-        these" needs a second column and a scoring rule to read it; until that
-        exists, this returns only what it is sure of.
+        So a multi-token line resolves to nothing here. The subset of those lines
+        that are genuinely disjunctive is recovered by
+        :meth:`resolve_alternatives` into its own column, with its own scoring
+        rule; everything this cannot classify stays an honest unmatched
+        requirement, which is the same answer it has today.
         """
         found = self.resolve_within(text, min_alias_length=min_alias_length)
         return found[0] if len(found) == 1 else None
+
+    def resolve_alternatives(
+        self, text: str, *, min_alias_length: int = 3
+    ) -> tuple[str, ...] | None:
+        """The tokens of an *any one of these* list, or ``None``.
+
+        Args:
+            text: A whole requirement sentence.
+            min_alias_length: Passed through to :meth:`resolve_within`.
+
+        Returns:
+            Two or more tokens, any one of which satisfies the requirement, or
+            ``None`` when the line is not a disjunction this can be sure of.
+
+        A multi-token sentence is one of two things, and they score in opposite
+        directions:
+
+        - **"AWS, GCP, or Azure"** — a disjunction. Holding one satisfies it.
+          Scored as a conjunction it invents two gaps out of three.
+        - **"Python and Django"** — a conjunction. Holding one does *not*
+          satisfy it. Scored as a disjunction it invents a match, which is the
+          direction MATCH_SCORING.md §3.2 says never to be wrong in.
+
+        Two gates, both required, and both structural rather than semantic:
+
+        1. **Every token shares a family.** Nobody demands all three clouds;
+           everybody demands Python *and* Postgres. A cross-family list is a
+           conjunction almost without exception, and this rejects it without
+           reading the sentence. That single test disposes of "Python and
+           Django", "AWS and Kubernetes", "React with TypeScript".
+        2. **The sentence says "or".** Same-family conjunctions do exist —
+           "migrating from MySQL to Postgres", "AWS and Azure both in
+           production" — and only the words separate them from a list. A bare
+           comma list with no marker is rejected rather than guessed at.
+
+        Gate 2 is what makes the ``language`` family safe to admit. Its
+        adjacency is 0.00 *deliberately* — Python does not substitute for Java —
+        so a language list is precisely the case a single column scored wrong in
+        both directions, and precisely the case a marked disjunction gets right.
+        """
+        found = self.resolve_within(text, min_alias_length=min_alias_length)
+        if len(found) < 2:
+            return None
+        families = {self.skills[token].family for token in found if token in self.skills}
+        if len(families) != 1:
+            return None
+        if not _DISJUNCTION.search(text.lower()):
+            return None
+        return found
 
     def resolve_with_hint(self, phrase: str, hint: str | None = None) -> str | None:
         """Stage 1, then the model's advisory hint.

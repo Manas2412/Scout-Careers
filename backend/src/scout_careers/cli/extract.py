@@ -597,11 +597,29 @@ def containment(
     echo("")
     echo(f"{len(found):,} unresolved hard requirement(s) would resolve at min-alias {min_alias}.")
 
-    multi = [(text, tokens) for text, tokens in found if len(tokens) > 2]
-    if multi:
+    single = [(text, tokens) for text, tokens in found if len(tokens) == 1]
+    multi = [(text, tokens) for text, tokens in found if len(tokens) > 1]
+    alternatives = [
+        (text, alts)
+        for text, _ in multi
+        if (alts := vocab.resolve_alternatives(text, min_alias_length=min_alias)) is not None
+    ]
+    echo("")
+    echo(f"  {len(single):,} resolve to one token      -> normalised_skill")
+    echo(f"  {len(alternatives):,} are marked disjunctions   -> normalised_alternatives")
+    echo(f"  {len(multi) - len(alternatives):,} multi-token, unclassified -> left NULL, as today")
+
+    if alternatives:
         echo("")
-        echo(f"  {len(multi):,} row(s) match more than two tokens — read these first:")
-        for text, tokens in multi[:top]:
+        echo("  Disjunctions — every one of these must read as 'any one will do':")
+        for text, alts in alternatives[:top]:
+            echo(f"    {'|'.join(alts)[:38]:38}  {text[:56]}")
+
+    rejected = [(text, tokens) for text, tokens in multi if len(tokens) > 2][:top]
+    if rejected:
+        echo("")
+        echo("  Rejected multi-token rows — check none of these is a missed disjunction:")
+        for text, tokens in rejected:
             echo(f"    {'+'.join(tokens)[:38]:38}  {text[:56]}")
     echo("")
     echo("  Nothing written. Lower --min-alias to see what short aliases would do.")

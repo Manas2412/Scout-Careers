@@ -326,3 +326,54 @@ def test_an_or_list_resolves_to_nothing() -> None:
     text = "Hands-on coding expertise in one or more modern programming languages (Java, JavaScript, Python)"
     assert len(vocab.resolve_within(text)) > 1
     assert vocab.resolve_one_within(text) is None
+
+
+# --------------------------------------------------------------------------
+# resolve_alternatives — the two structural gates
+# --------------------------------------------------------------------------
+
+
+def test_a_marked_same_family_list_is_a_disjunction() -> None:
+    vocab = get_vocabulary()
+    text = "Experience with cloud infrastructure (AWS, GCP, or Azure)"
+    assert vocab.resolve_alternatives(text) == ("aws", "azure", "gcp")
+
+
+def test_the_language_list_that_broke_the_single_column_now_resolves() -> None:
+    """The case `resolve_one_within` documents as unfixable with one column.
+
+    The `language` family is scored 0.00 for adjacency on purpose, so this line
+    is the one a single column got wrong in *both* directions — and the one a
+    marked disjunction gets right.
+    """
+    vocab = get_vocabulary()
+    text = "Hands-on coding expertise in one or more modern programming languages (Java, JavaScript, Python)"
+    alternatives = vocab.resolve_alternatives(text)
+    assert alternatives is not None
+    assert set(alternatives) >= {"java", "javascript", "python"}
+
+
+def test_a_cross_family_list_is_a_conjunction() -> None:
+    """Gate 1. Nobody demands all three clouds; everybody demands Python *and*
+    Postgres. Reading this as "any one will do" would invent a match, which is
+    the direction MATCH_SCORING.md §3.2 says never to be wrong in."""
+    vocab = get_vocabulary()
+    text = "Strong Python and Postgres experience, or equivalent"
+    assert len(vocab.resolve_within(text)) > 1
+    assert vocab.resolve_alternatives(text) is None
+
+
+def test_a_bare_comma_list_is_not_a_disjunction() -> None:
+    """Gate 2. "Postgres, Redis and MySQL" is a stack, not a choice. Same
+    family, no marker, and holding one of the three is not holding all three."""
+    vocab = get_vocabulary()
+    text = "Production experience with Postgres, Redis and MySQL"
+    assert len(vocab.resolve_within(text)) > 1
+    assert vocab.resolve_alternatives(text) is None
+
+
+def test_a_single_token_line_is_never_alternatives() -> None:
+    """One token is `normalised_skill`'s job. Two columns must never both be
+    populated for one row, and this is the half of that the resolver owns."""
+    vocab = get_vocabulary()
+    assert vocab.resolve_alternatives("Production experience in Java or similar") is None
