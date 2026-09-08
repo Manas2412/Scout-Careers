@@ -51,12 +51,71 @@ from typing import Final
 #: matches a real technical requirement is rejected, however much noise it
 #: catches — a filter that removes a genuine "distributed systems" line to be
 #: rid of "fast-paced environment" has made the score worse, not better.
-BOILERPLATE_PHRASES: Final[tuple[str, ...]] = ()
+BOILERPLATE_PHRASES: Final[tuple[str, ...]] = (
+    # --- communication. The single largest group, ~336 rows across a dozen
+    # phrasings, and the one that made the gap list say the operator's biggest
+    # obstacle was an inability to communicate.
+    "communication skill",
+    "verbal and written",
+    "written and verbal",
+    "excellent communicator",
+    "communicate with clarity",
+    # --- education. A degree is a fact about the operator that no vocabulary
+    # token can express and no amount of skill can change.
+    "bachelor's degree",
+    "bachelor degree",
+    "graduate degree",
+    "bs degree",
+    "bs (or higher)",
+    "minimum education",
+    "field of study",
+    "equivalent practical experience",
+    # --- temperament. "Thrives in ambiguity" is true of everyone who applies
+    # and false of no one who is hired; it cannot discriminate between roles.
+    "fast-paced",
+    "fast paced",
+    "fast-moving",
+    "thrives in ambiguity",
+    "take ownership of your growth",
+    "taking ownership of complex",
+    "bias toward action",
+    "highly adaptable",
+    "coachability",
+    "relentless commitment to excellence",
+    "proactive approach",
+    "cultural nuances",
+    "problem-solving skills",
+    # --- language.
+    "fluency in english",
+    "fluency in spanish",
+    "near-native fluency",
+    # --- code-quality platitudes. "Writes high quality code that is easily
+    # understood" appears in five near-identical dressings; the substring match
+    # collapses them, which is why this approach works against a 6,991-text tail.
+    "high quality code that is easily understood",
+    #
+    # Deliberately absent: anything naming years of experience. "5+ years of
+    # software engineering experience" against an operator with 1.5 is a real
+    # gap and the operator asked for it to show. Stage ④ already drops postings
+    # demanding more than FILTER_MAX_YEARS_EXPERIENCE, so what survives is
+    # within reach — but "within reach" is not "met", and hiding it would be
+    # the scorer flattering its own operator.
+    #
+    # Also absent: "significant changes in a large code base". It reads like a
+    # platitude and is closer to a real capability; ~20 rows is not worth the
+    # ambiguity.
+)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class NoiseOutcome:
-    """What a reclassification pass found."""
+    """What a reclassification pass found.
+
+    Mutable, like :class:`~scout_careers.extract.service.ReresolveOutcome` and
+    unlike everything else in this module: it is an accumulator written to once
+    per row, not a value object. Declaring it ``frozen`` cost a gate failure
+    that mypy caught and a human then ran past.
+    """
 
     considered: int = 0
     reclassified: int = 0

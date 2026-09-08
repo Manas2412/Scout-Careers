@@ -43,6 +43,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from scout_careers.common.logging import get_logger
 from scout_careers.common.types import RequirementKind
 from scout_careers.db.models import JobPosting, Requirement
+from scout_careers.extract.noise import BOILERPLATE_PHRASES, NoiseOutcome, matching_phrase
 from scout_careers.extract.schema import ExtractionResult
 from scout_careers.extract.vocabulary import Vocabulary, canonical_key, get_vocabulary
 from scout_careers.llm.base import LLMClient
@@ -539,3 +540,68 @@ __all__ = [
     "summarise",
     "version_string",
 ]
+
+
+async def reclassify_boilerplate(
+    session: AsyncSession,
+    *,
+    phrases: Sequence[str] = BOILERPLATE_PHRASES,
+    dry_run: bool = False,
+    batch_size: int = 500,
+) -> NoiseOutcome:
+    """Move boilerplate ``hard`` requirements to ``condition``. No model calls.
+
+    Args:
+        session: An open session. The caller commits.
+        phrases: The boilerplate list; injectable for simulation and tests.
+        dry_run: Count what would change and write nothing.
+        batch_size: Rows per flush.
+
+    Returns:
+        What moved, and which phrase moved it.
+
+    **Only rows that resolve to no vocabulary token are considered.** A
+    requirement reading "Strong communication skills and deep Kubernetes
+    experience" resolves to ``kubernetes``; it is a real requirement wearing a
+    boilerplate opening, and reclassifying it would delete a match rather than
+    remove noise. The token is the evidence that the line says something the
+    scorer can act on.
+
+    **Reclassified, never deleted.** ``condition`` rows are extracted, stored
+    and visible in the posting; they simply carry no coverage weight — the same
+    treatment "four 10-hour shifts covering weekends" already gets. The operator
+    still sees that a role wants a degree.
+
+    **Re-runnable and reversible in effect.** Editing the phrase list and
+    running again reclassifies whatever the new list catches; nothing here
+    depends on having run before. What it cannot do is put a row *back* to
+    ``hard`` — that needs a re-extraction, which is why the dry run exists and
+    why the phrases are measured against the corpus before they ship.
+    """
+    outcome = NoiseOutcome()
+    statement = select(Requirement).where(
+        Requirement.kind == RequirementKind.HARD,
+        Requirement.normalised_skill.is_(None),
+    )
+    pending = 0
+
+    for row in (await session.execute(statement)).scalars():
+        outcome.considered += 1
+        phrase = matching_phrase(row.text_, phrases)
+        if phrase is None:
+            continue
+        outcome.reclassified += 1
+        outcome.by_phrase[phrase] = outcome.by_phrase.get(phrase, 0) + 1
+        if len(outcome.samples) < 20:
+            outcome.samples.append((phrase, row.text_))
+        if dry_run:
+            continue
+        row.kind = RequirementKind.CONDITION
+        pending += 1
+        if pending >= batch_size:
+            await session.flush()
+            pending = 0
+
+    if pending and not dry_run:
+        await session.flush()
+    return outcome

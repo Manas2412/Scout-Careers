@@ -32,7 +32,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Final
+from typing import ClassVar, Final
 
 import yaml
 
@@ -135,6 +135,84 @@ class Vocabulary:
         they are a fit when they are not.
         """
         return self.alias_index.get(canonical_key(phrase))
+
+    #: Families a containment scan must never match. A *practice* token names a
+    #: way of working, and its aliases are ordinary English words — "security",
+    #: "performance", "testing", "ownership". Prose mentions ways of working
+    #: constantly without demanding them: "Have navigated enterprise production
+    #: requirements such as integrations, reliability, observability" matched
+    #: three of these at once on the live corpus, and none of the three was a
+    #: requirement.
+    #:
+    #: `ownership` is the sharpest case. The boilerplate pass reclassified "take
+    #: ownership of your growth"; a containment scan would resolve whatever
+    #: survived to `ownership`, which every resume variant holds — turning
+    #: boilerplate into a *met* requirement. Understating is the direction to be
+    #: wrong in (MATCH_SCORING.md §3.2), and this would be the other one.
+    #:
+    #: A technology token is a proper noun. Prose mentions Postgres because the
+    #: role uses Postgres.
+    UNSAFE_FOR_CONTAINMENT: ClassVar[frozenset[str]] = frozenset({"practice", "analysis"})
+
+    def resolve_within(self, text: str, *, min_alias_length: int = 3) -> tuple[str, ...]:
+        """Stage 1b: every token an alias *inside* ``text`` names.
+
+        Args:
+            text: A whole requirement sentence, not a phrase.
+            min_alias_length: Aliases shorter than this are skipped.
+
+        Returns:
+            The tokens found, sorted, longest alias winning where two overlap.
+
+        :meth:`resolve` is an exact whole-phrase lookup, which is right for a
+        resume's skills line — those items *are* phrases. A job requirement is a
+        sentence, and "Production programming experience in Java" therefore
+        resolved to nothing at all while ``java`` sat in the index. On the
+        2026-09-07 corpus that shape accounted for a large share of 8,769
+        unresolved ``hard`` rows: not a vocabulary gap, a lookup that could not
+        see inside the string it was given.
+
+        **Never a practice token.** See :attr:`UNSAFE_FOR_CONTAINMENT`.
+
+        **Whole-word, and never short.** ``go`` appears in "go to market" and
+        "ability to go deep"; ``r`` and ``c`` appear in almost every sentence
+        written. A containment match on a two-character alias would invent
+        coverage, which is the one direction MATCH_SCORING.md §3.2 says never to
+        be wrong in. Short aliases are skipped entirely rather than guessed at —
+        a role wanting Go states it in a way some longer alias catches, or it
+        does not resolve and shows as a gap.
+        """
+        lowered = text.lower()
+        found: set[str] = set()
+        for alias, token in self.alias_index.items():
+            if len(alias) < min_alias_length:
+                continue
+            skill = self.skills.get(token)
+            if skill is None or skill.family in self.UNSAFE_FOR_CONTAINMENT:
+                continue
+            if re.search(rf"\b{re.escape(alias)}\b", lowered):
+                found.add(token)
+        return tuple(sorted(found))
+
+    def resolve_one_within(self, text: str, *, min_alias_length: int = 3) -> str | None:
+        """The single token ``text`` names, or ``None`` when it names several.
+
+        ``requirement.normalised_skill`` is one column, and a requirement
+        reading "Experience with cloud infrastructure (AWS, GCP, or Azure)" is
+        an *or*: any one of three satisfies it. Storing one of them is a guess,
+        and for some families a costly one — ``aws``/``azure``/``gcp`` share a
+        family scored 0.60 for adjacency, so the guess degrades to ``partial``;
+        ``java``/``javascript``/``python`` share a family scored 0.00, because
+        Python is not a substitute for Java. Storing ``java`` on a line the
+        operator satisfies with Python would score ``missing`` and invent a gap.
+
+        So a multi-token line resolves to nothing and stays an honest unmatched
+        requirement, which is the same answer it has today. Expressing "any of
+        these" needs a second column and a scoring rule to read it; until that
+        exists, this returns only what it is sure of.
+        """
+        found = self.resolve_within(text, min_alias_length=min_alias_length)
+        return found[0] if len(found) == 1 else None
 
     def resolve_with_hint(self, phrase: str, hint: str | None = None) -> str | None:
         """Stage 1, then the model's advisory hint.

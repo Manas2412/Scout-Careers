@@ -29,12 +29,18 @@ from scout_careers.common.logging import configure_logging
 from scout_careers.common.types import RequirementKind
 from scout_careers.db.models import JobPosting, Requirement
 from scout_careers.db.session import session_scope
-from scout_careers.extract.noise import looks_technical, matching_phrase, phrase_counts
+from scout_careers.extract.noise import (
+    BOILERPLATE_PHRASES,
+    looks_technical,
+    matching_phrase,
+    phrase_counts,
+)
 from scout_careers.extract.service import (
     FAMILY,
     Extraction,
     ReresolveOutcome,
     extract_posting,
+    reclassify_boilerplate,
     reresolve,
     store_requirements,
     summarise,
@@ -335,11 +341,75 @@ async def _extract_all(settings: Settings, *, limit: int | None, force: bool) ->
 __all__ = ["app"]
 
 
+async def _apply_boilerplate(*, dry_run: bool, yes: bool) -> int:
+    """Reclassify boilerplate `hard` rows to `condition`, with a dry run first."""
+    async with session_scope() as session:
+        outcome = await reclassify_boilerplate(session, dry_run=True)
+
+        echo_table(
+            ["phrase", "rows"],
+            [
+                [phrase, f"{count:,}"]
+                for phrase, count in sorted(
+                    outcome.by_phrase.items(), key=lambda item: (-item[1], item[0])
+                )
+            ],
+        )
+        echo("")
+        echo(
+            f"{outcome.reclassified:,} of {outcome.considered:,} unresolved hard "
+            "requirement(s) would move to `condition` and stop carrying coverage weight."
+        )
+        if outcome.samples:
+            echo("")
+            echo("  A sample of what moves — read these before confirming:")
+            for phrase, text in outcome.samples[:10]:
+                echo(f"    [{phrase}] {text[:76]}")
+
+        if dry_run or not outcome.reclassified:
+            echo("")
+            echo("Wrote nothing.")
+            return 0
+
+        if not yes:
+            echo("")
+            confirmed = typer.confirm(
+                f"Reclassify {outcome.reclassified:,} requirement(s)?", default=False
+            )
+            if not confirmed:
+                echo("Nothing written.")
+                return 0
+
+        applied = await reclassify_boilerplate(session, dry_run=False)
+        await session.commit()
+
+    echo("")
+    echo(f"Reclassified {applied.reclassified:,} requirement(s).")
+    echo(
+        "  Re-run `scout-careers score postings` to see it. A `condition` row cannot "
+        "be moved back without re-extracting the posting, which is why the dry run "
+        "runs first and why the phrases were measured before they shipped."
+    )
+    return 0
+
+
 @app.command("boilerplate")
 def boilerplate(
+    simulate: Annotated[
+        bool,
+        typer.Option("--simulate", help="Simulate the shipped BOILERPLATE_PHRASES list."),
+    ] = False,
+    apply: Annotated[
+        bool,
+        typer.Option("--apply", help="Reclassify the shipped list from hard to condition."),
+    ] = False,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="With --apply: report and write nothing.")
+    ] = False,
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip the confirmation.")] = False,
     words: Annotated[
         str | None,
-        typer.Option("--words", help="Comma-separated candidate phrases to simulate."),
+        typer.Option("--words", help="Comma-separated phrases to simulate instead."),
     ] = None,
     top: Annotated[int, typer.Option("--top", help="Rows to show.")] = 40,
     as_json: Annotated[bool, typer.Option("--json")] = False,
@@ -361,6 +431,9 @@ def boilerplate(
     settings = get_settings()
     configure_logging(settings)
 
+    if apply:
+        raise SystemExit(run_async(_apply_boilerplate(dry_run=dry_run, yes=yes)))
+
     async def work() -> list[tuple[int, str]]:
         async with session_scope() as session:
             rows = (
@@ -379,8 +452,12 @@ def boilerplate(
     counted = run_async(work())
     total = sum(count for count, _ in counted)
 
-    if words:
-        candidates = tuple(word.strip().lower() for word in words.split(",") if word.strip())
+    if words or simulate:
+        candidates = (
+            tuple(word.strip().lower() for word in words.split(",") if word.strip())
+            if words
+            else BOILERPLATE_PHRASES
+        )
         texts = [text for count, text in counted for _ in range(count)]
         counts = phrase_counts(texts, candidates)
         flagged = {
@@ -410,10 +487,12 @@ def boilerplate(
             ],
         )
         moved = sum(1 for _, text in counted if matching_phrase(text, candidates))
+        moved_rows = sum(count for count, text in counted if matching_phrase(text, candidates))
+        share = (moved_rows * 100) // total if total else 0
         echo("")
         echo(
-            f"{moved:,} of {len(counted):,} distinct unresolved hard requirement(s) "
-            f"would be reclassified, covering {total:,} row(s) in total."
+            f"{moved:,} of {len(counted):,} distinct texts would be reclassified, "
+            f"covering {moved_rows:,} of {total:,} unresolved hard row(s) ({share}%)."
         )
         for phrase, hits in flagged.items():
             if not hits:
@@ -449,3 +528,80 @@ def boilerplate(
         "  A line here that describes the candidate rather than the work is boilerplate: "
         "simulate it with `extract boilerplate --words '...'` before adding it anywhere."
     )
+
+
+@app.command("containment")
+def containment(
+    top: Annotated[int, typer.Option("--top", help="Sample rows to show.")] = 40,
+    min_alias: Annotated[
+        int, typer.Option("--min-alias", help="Skip aliases shorter than this.")
+    ] = 3,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """Simulate resolving tokens found *inside* unresolved requirement text.
+
+    ``Vocabulary.resolve`` is an exact whole-phrase lookup — correct for a
+    resume's skills line, where each item is a phrase, and wrong for a job
+    requirement, which is a sentence. "Production programming experience in
+    Java" resolved to nothing while ``java`` sat in the index.
+
+    This shows what a containment pass would recover and, more usefully, what it
+    would get wrong. Read the multi-token rows: a requirement matching four
+    tokens is usually a sentence listing four technologies, but it can also be
+    one alias appearing inside an unrelated word. Nothing is written.
+    """
+    settings = get_settings()
+    configure_logging(settings)
+    vocab = get_vocabulary()
+
+    async def work() -> list[tuple[str, tuple[str, ...]]]:
+        async with session_scope() as session:
+            rows = (
+                await session.execute(
+                    select(Requirement.text_).where(
+                        Requirement.kind == RequirementKind.HARD,
+                        Requirement.normalised_skill.is_(None),
+                    )
+                )
+            ).scalars()
+            return [
+                (text, tokens)
+                for text in rows
+                if (tokens := vocab.resolve_within(text, min_alias_length=min_alias))
+            ]
+
+    found = run_async(work())
+    by_token: dict[str, int] = {}
+    for _, tokens in found:
+        for token in tokens:
+            by_token[token] = by_token.get(token, 0) + 1
+
+    if as_json:
+        echo_json(
+            {
+                "min_alias_length": min_alias,
+                "rows_recovered": len(found),
+                "by_token": by_token,
+                "sample": [{"text": text, "tokens": list(tokens)} for text, tokens in found[:top]],
+            }
+        )
+        return
+
+    echo_table(
+        ["token", "rows"],
+        [
+            [token, str(count)]
+            for token, count in sorted(by_token.items(), key=lambda item: (-item[1], item[0]))[:30]
+        ],
+    )
+    echo("")
+    echo(f"{len(found):,} unresolved hard requirement(s) would resolve at min-alias {min_alias}.")
+
+    multi = [(text, tokens) for text, tokens in found if len(tokens) > 2]
+    if multi:
+        echo("")
+        echo(f"  {len(multi):,} row(s) match more than two tokens — read these first:")
+        for text, tokens in multi[:top]:
+            echo(f"    {'+'.join(tokens)[:38]:38}  {text[:56]}")
+    echo("")
+    echo("  Nothing written. Lower --min-alias to see what short aliases would do.")

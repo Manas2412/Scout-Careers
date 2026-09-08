@@ -241,3 +241,88 @@ def test_malformed_yaml_is_refused_without_quoting_the_file(tmp_path: Path) -> N
     path = write(tmp_path / "v.yaml", "version: t\nskills: [unclosed\n")
     with pytest.raises(ConfigError, match="not valid YAML"):
         load_vocabulary(path)
+
+
+# --------------------------------------------------------------------------
+# Containment: finding a token inside a sentence, and what it must not find
+# --------------------------------------------------------------------------
+
+
+def test_a_token_inside_a_sentence_is_found() -> None:
+    """`resolve` is an exact whole-phrase lookup, which is right for a resume's
+    skills line and wrong for a job requirement. "Production programming
+    experience in Java" resolved to nothing while `java` sat in the index."""
+    vocab = get_vocabulary()
+    assert vocab.resolve("Production programming experience in Java") is None
+    assert "java" in vocab.resolve_within("Production programming experience in Java")
+
+
+def test_several_technologies_in_one_sentence_all_resolve() -> None:
+    vocab = get_vocabulary()
+    found = vocab.resolve_within("Experience with cloud infrastructure (AWS, GCP, or Azure)")
+    assert {"aws", "gcp", "azure"} <= set(found)
+
+
+def test_a_practice_family_token_is_never_found_by_containment() -> None:
+    """The error this guard exists to stop, arrived at from the other side.
+
+    `security_practice`, `performance_tuning`, `ownership` and `testing` have
+    ordinary English words for aliases, and prose mentions ways of working
+    without demanding them — one live requirement matched three at once. Worse,
+    `ownership` is a token every resume variant holds, so a containment match
+    would turn boilerplate the reclassifier had just demoted into a *met*
+    requirement.
+    """
+    vocab = get_vocabulary()
+    text = (
+        "Have navigated enterprise production requirements such as integrations, "
+        "reliability, observability, security and performance"
+    )
+    found = set(vocab.resolve_within(text))
+    assert "security_practice" not in found
+    assert "performance_tuning" not in found
+    assert "ownership" not in found
+    assert "testing" not in found
+
+
+def test_ownership_prose_resolves_to_nothing() -> None:
+    text = "A proven track record of taking ownership of complex, ambiguous projects"
+    assert get_vocabulary().resolve_within(text) == ()
+
+
+def test_a_short_alias_is_skipped() -> None:
+    """`go` appears in "go to market" and "ability to go deep"; `r` and `c` in
+    almost every sentence written. A containment match on those would invent
+    coverage, so a role wanting Go either states it in a way a longer alias
+    catches or it stays an honest gap."""
+    vocab = get_vocabulary()
+    assert vocab.resolve_within("We go to market with a partner-led motion") == ()
+
+
+def test_containment_never_invents_a_token() -> None:
+    """Whatever it returns must already be in the vocabulary — the same
+    guarantee `resolve` gives. A containment scan that could mint a token would
+    be worse than no scan."""
+    vocab = get_vocabulary()
+    text = "Experience with Kubernetes, Terraform and Postgres in production"
+    assert all(token in vocab.skills for token in vocab.resolve_within(text))
+
+
+def test_a_single_token_sentence_resolves() -> None:
+    vocab = get_vocabulary()
+    assert vocab.resolve_one_within("Production programming experience in Java") == "java"
+
+
+def test_an_or_list_resolves_to_nothing() -> None:
+    """`requirement.normalised_skill` is one column and this line is an *or*.
+
+    For the cloud family a guess degrades to `partial` through adjacency. For
+    the language family, scored 0.00 because Python does not substitute for
+    Java, storing `java` on a line the operator satisfies with Python would
+    score `missing` — inventing a gap. A line naming several stays unmatched,
+    which is exactly what it is today.
+    """
+    vocab = get_vocabulary()
+    text = "Hands-on coding expertise in one or more modern programming languages (Java, JavaScript, Python)"
+    assert len(vocab.resolve_within(text)) > 1
+    assert vocab.resolve_one_within(text) is None
