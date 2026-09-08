@@ -76,7 +76,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 Emphasis = Literal["critical", "core", "standard", "light", "marginal"]
-Kind = Literal["hard", "nice", "responsibility", "tool"]
+Kind = Literal["hard", "nice", "responsibility", "tool", "condition"]
 
 Span = Annotated[str, StringConstraints(min_length=3, max_length=400)]
 

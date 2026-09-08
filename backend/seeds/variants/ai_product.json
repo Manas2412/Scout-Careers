@@ -1,0 +1,168 @@
+{
+  "key": "ai_product",
+  "name": "AI Product Engineer",
+  "target": "Product-facing AI roles at startups shipping user-visible LLM features.",
+  "source_path": "/sessions/jolly-relaxed-goldberg/mnt/outputs/resume/Manas_Sisodia_AI_Product.docx",
+  "content": {
+    "header": {
+      "name": "MANAS SISODIA",
+      "contact": "LinkedIn  |  9810904048  |  manassisodia3@gmail.com  |  GitHub"
+    },
+    "summary": "Applied AI engineer who owns retrieval systems end to end — architecture, eval harness, LLM serving and cloud deployment. Shipped a multilingual RAG assistant now live in production on kheloindia.gov.in answering citizens in 12 languages, and sole-engineered a 60,000-LOC Parliamentary Question drafting platform piloted in a live 2026 Parliament session. Ships against measurement, not intuition: 213-case eval banks, judge-scored regression runs and latency budgets gate every release. National-level athlete and 7x hackathon placer.",
+    "skills": [
+      {
+        "label": "AI / ML",
+        "items": [
+          "RAG architecture",
+          "LangGraph multi-agent orchestration",
+          "hybrid retrieval (Reciprocal Rank Fusion)",
+          "HyDE / HyQ query expansion",
+          "cross-encoder reranking",
+          "eval harness design",
+          "LLM-as-judge scoring",
+          "prompt versioning",
+          "streaming inference",
+          "semantic caching"
+        ]
+      },
+      {
+        "label": "Models & Providers",
+        "items": [
+          "Azure OpenAI (GPT-5.4, text-embedding-3-large)",
+          "AWS Bedrock (Claude Opus 4.6 / Sonnet 4.6, Cohere Embed)",
+          "Cohere Rerank",
+          "Bhashini",
+          "Sarvam AI",
+          "Ollama (Llama 3.1)"
+        ]
+      },
+      {
+        "label": "Vector & Data",
+        "items": [
+          "pgvector (HNSW, IVFFlat)",
+          "pg_trgm",
+          "PostgreSQL",
+          "Redis (OSS cluster, RediSearch)",
+          "Azure AI Document Intelligence",
+          "Pinecone",
+          "Chroma"
+        ]
+      },
+      {
+        "label": "Backend & Infra",
+        "items": [
+          "Python",
+          "FastAPI",
+          "SQLAlchemy 2.0 (async)",
+          "Pydantic v2",
+          "Alembic",
+          "SSE streaming",
+          "Azure Service Bus",
+          "Node.js",
+          "Docker",
+          "Azure (App Service, ACR)",
+          "AWS (ECS Fargate, RDS, Bedrock)"
+        ]
+      },
+      {
+        "label": "Languages",
+        "items": [
+          "Python",
+          "TypeScript",
+          "JavaScript",
+          "SQL",
+          "C++"
+        ]
+      }
+    ],
+    "experience": [
+      {
+        "role": "Project Analyst",
+        "employer": "EY  (deployed to National e-Governance Division, MeitY)",
+        "location": "New Delhi",
+        "dates": "May 2026 – Present",
+        "context": "AI engineering for Government of India digital platforms — Ministry of Youth Affairs & Sports, Sports Authority of India, and Ministry of Corporate Affairs.",
+        "blocks": [
+          {
+            "title": "Khelo India Knowledge Assistant — live in production on kheloindia.gov.in",
+            "bullets": [
+              {
+                "id": "ai_product.exp.0.0.0",
+                "text": "Architected and shipped a citizen-facing multilingual RAG assistant on Azure — 206 documents / 11,611 chunks, 12 languages (9 voice-enabled) via Bhashini with Sarvam fallback, streaming SSE answers off a Service Bus queue and Redis pub/sub worker pipeline."
+              },
+              {
+                "id": "ai_product.exp.0.0.1",
+                "text": "Designed hybrid retrieval that measurably beat naive cosine search: pgvector ANN over both content chunks and 86,000 generated hypothetical questions, fused with pg_trgm lexical search via Reciprocal Rank Fusion, per-document diversity caps and an optional Cohere cross-encoder — lifting judged correctness to 3.9 / 4 across a 213-case eval bank over 28 archived runs."
+              },
+              {
+                "id": "ai_product.exp.0.0.2",
+                "text": "Built a LangGraph multi-agent router fanning vector retrieval and live CMS API orchestration out concurrently (~30 curated endpoints, no model-authored SQL) behind an env-flag kill switch; 532 offline tests across 40 modules; cut run-rate ~60% (₹9.4L → ₹3.5L/month) at ~₹1.35 per query, sized for 10,000 daily users."
+              }
+            ]
+          },
+          {
+            "title": "PQ-Bot — Parliamentary Question drafting platform · MYAS / Sports Authority of India",
+            "bullets": [
+              {
+                "id": "ai_product.exp.0.1.0",
+                "text": "Sole engineer on a ~60,000-LOC AI drafting platform (95 API endpoints, 34 tables, 33 migrations) piloted during the 2026 Parliament monsoon session, grounding official replies in a 702-document corpus of prior tabled Lok Sabha and Rajya Sabha answers."
+              },
+              {
+                "id": "ai_product.exp.0.1.1",
+                "text": "Built a 10-stage retrieval pipeline on AWS Bedrock — semantic cache, LLM query planner, verbatim answer-of-record reuse, pgvector search, LLM reranking, and recency blending with per-claim volatility half-lives — emitting per-sentence citations behind pre- and post-generation validation gates."
+              },
+              {
+                "id": "ai_product.exp.0.1.2",
+                "text": "Added an LLM text-to-SQL layer over uploaded datasets hardened with sqlglot AST validation (SELECT-only, prefixed tables, statement timeouts, row caps) inside read-only transactions; two eval harnesses gate releases, 312 backend tests green, SAST closed at zero critical findings."
+              }
+            ]
+          },
+          {
+            "title": "MYAS Task Tracker & Khelo India Expenditure Tracker — internal platforms, in production",
+            "bullets": [
+              {
+                "id": "ai_product.exp.0.2.0",
+                "text": "Authored the system architecture, HLD/LLD and deployment design for both; re-platformed the task tracker from EC2/PM2 onto ECS Fargate (ARM64) + RDS Postgres 16 + ALB/WAF with GitHub OIDC CI/CD that runs migrations as an in-VPC one-off task and aborts the deploy on failure. Expenditure platform tracks ₹924 Cr of scheme budget across 14 regional centres."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "role": "Full Stack Developer Intern",
+        "employer": "Allatone Solutions Pvt. Ltd.",
+        "location": "Noida",
+        "dates": "Feb 2025 – Jun 2025",
+        "context": "Oracle Cloud Partner — 20+ enterprise clients including Aditya Birla Group, Adani, and Acko.",
+        "blocks": [
+          {
+            "title": "",
+            "bullets": [
+              {
+                "id": "ai_product.exp.1.0.0",
+                "text": "Architected a Docker + GitHub Actions CI/CD pipeline on AWS EC2 + Nginx, cutting deploy time 80% (15 min to under 3) with zero-downtime rolling releases."
+              },
+              {
+                "id": "ai_product.exp.1.0.1",
+                "text": "Engineered a real-time inventory backend (Node.js, PostgreSQL, Redis) automating 3 reconciliation workflows and eliminating ~4 hrs/day of ops overhead; consolidated 15+ scattered permission checks into a single JWT RBAC middleware layer."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "projects": [],
+    "education": [
+      {
+        "qualification": "B.Tech — Electronics and Communication Engineering  ·  GGSIPU, Delhi",
+        "dates": "2021 – 2025"
+      }
+    ],
+    "achievements": [
+      "7x hackathon placer — including 1st Place, UHI Hackathon (Spectrum Slam): UHI-compliant mental health platform, 1st among 200+ teams.",
+      "2nd Place — BVP-HEX Hackathon | Blockchain-based supply chain traceability system.",
+      "Codeforces Rating 1615 — top ~15% globally across rated competitive programming rounds."
+    ]
+  },
+  "skill_set": []
+}

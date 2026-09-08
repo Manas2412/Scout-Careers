@@ -213,7 +213,7 @@ so a failure in scoring never forces a re-fetch.
                   Kills ~80% before any token is spent.
         │
  ⑤  EXTRACT       LLM structured output → Requirement[]
-                  (hard | nice | responsibility | tool)
+                  (hard | nice | responsibility | tool | condition)
         │
  ⑥  SCORE         for each active ResumeVariant: requirement-by-requirement
                   coverage with linked evidence → MatchScore + gap list

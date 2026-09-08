@@ -184,6 +184,7 @@ def _deps(settings: Settings, *, lock: FakeLock) -> RunnerDeps:
         lock=lock,
         session_factory=None,
         dedupe=False,
+        screen=False,
     )
 
 

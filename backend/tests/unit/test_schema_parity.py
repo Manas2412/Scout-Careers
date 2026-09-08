@@ -7,10 +7,18 @@ the migration takes out every query against that table — and it does so at
 runtime, against a database that migrated cleanly, with an error naming a column
 the operator never heard of.
 
-This is a static comparison. It parses the migration's ``op.create_table`` calls
-rather than connecting to Postgres, so it runs in the offline unit gate where it
-will actually be seen, instead of in the integration tests that are skipped on
-every laptop without a database.
+This is a static comparison. It parses the migrations' ``op.create_table``,
+``op.add_column`` and ``op.drop_column`` calls rather than connecting to
+Postgres, so it runs in the offline unit gate where it will actually be seen,
+instead of in the integration tests that are skipped on every laptop without a
+database.
+
+The later two matter as much as the first. A schema is not one revision: 0004
+adds ``requirement.normalised_skill_hint`` to a table 0002 created, and a parser
+that only understood ``create_table`` reported it as a column that would break
+every query — a false alarm whose only cure is to weaken the check. Revisions are
+replayed in filename order so the reconstruction ends where a migrated database
+does.
 """
 
 from __future__ import annotations
@@ -35,29 +43,61 @@ def _migration_tables() -> dict[str, set[str]]:
     tables: dict[str, set[str]] = {}
     for path in sorted(MIGRATIONS.glob("[0-9]*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"))
-        for node in ast.walk(tree):
+        # `upgrade()` only. Walking the module would replay `downgrade()` too,
+        # and 0004's downgrade drops the very column its upgrade adds — so the
+        # reconstruction would end at a schema no database is ever in. A
+        # migrated database is the upgrades, in order, and nothing else.
+        for node in ast.walk(_upgrade_body(tree)):
             if not isinstance(node, ast.Call):
                 continue
-            if not (isinstance(node.func, ast.Attribute) and node.func.attr == "create_table"):
+            if not isinstance(node.func, ast.Attribute):
+                continue
+            operation = node.func.attr
+            if operation not in {"create_table", "add_column", "drop_column"}:
                 continue
             if not (node.args and isinstance(node.args[0], ast.Constant)):
                 continue
             table = str(node.args[0].value)
-            columns: set[str] = set()
-            for arg in node.args[1:]:
-                if not isinstance(arg, ast.Call):
-                    continue
-                func = arg.func
-                name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
-                # sa.Column("x", ...) directly, or a local helper whose first
-                # positional argument is the column name (this revision has one
-                # for timestamps).
-                if name in {"Column", "_timestamptz"} and arg.args:
-                    first = arg.args[0]
-                    if isinstance(first, ast.Constant):
-                        columns.add(str(first.value))
-            tables[table] = columns
+
+            if operation == "create_table":
+                tables[table] = {name for arg in node.args[1:] for name in _column_names(arg)}
+            elif operation == "add_column":
+                for arg in node.args[1:]:
+                    tables.setdefault(table, set()).update(_column_names(arg))
+            elif len(node.args) > 1 and isinstance(node.args[1], ast.Constant):
+                tables.setdefault(table, set()).discard(str(node.args[1].value))
     return tables
+
+
+def _upgrade_body(tree: ast.Module) -> ast.AST:
+    """Return the ``upgrade()`` function, or the module when there is none.
+
+    Falling back to the whole module rather than returning nothing: a revision
+    that names its function something else should over-report, not silently
+    contribute zero columns and make every check below vacuous.
+    """
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == "upgrade":
+            return node
+    return tree
+
+
+def _column_names(node: ast.expr) -> set[str]:
+    """Return the column name declared by a ``sa.Column(...)``-shaped call.
+
+    ``_timestamptz`` is a local helper in 0002 whose first positional argument is
+    also the column name; anything else is skipped, because a call this parser
+    does not understand must contribute nothing rather than a guess.
+    """
+    if not isinstance(node, ast.Call):
+        return set()
+    func = node.func
+    name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
+    if name in {"Column", "_timestamptz"} and node.args:
+        first = node.args[0]
+        if isinstance(first, ast.Constant):
+            return {str(first.value)}
+    return set()
 
 
 @pytest.fixture(scope="module")

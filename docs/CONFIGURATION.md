@@ -138,7 +138,7 @@ and no runtime reload.
 | Durations | Suffixed with the unit: `_S` seconds, `_MS` milliseconds, `_DAYS`, `_MONTHS`, `_MINUTES` |
 | Money | `_INR` or `_USD` in the name. `NUMERIC`-backed, never float where it reaches the database |
 | Lists | Comma-separated, no spaces: `DEFAULT_LOCATION_FILTER=IN,Remote` |
-| Maps | Comma-separated `key=value`: `SCORING_TIER_WEIGHTS=dream=1.10,strong=1.00,volume=0.90` |
+| Maps | Avoided. A `key=value` string is a parser, and a parser here fails in the settings layer where the error names neither the key nor the format — see §9.3. Prefer one scalar per value |
 | Cron | Standard five-field, **evaluated in `SCHEDULER_TIMEZONE`**, not UTC |
 | Times of day | `HH:MM`, 24-hour, in `SCHEDULER_TIMEZONE` |
 | Secrets | Typed `SecretStr`, so an accidental `repr()` prints `**********` |
@@ -422,7 +422,7 @@ changing.
 |---|---|---|---|---|
 | `EXTRACTION_PROMPT_VERSION` | str | `extract.v3` | no | Written to `requirement.prompt_version` |
 | `SKILL_VOCAB_VERSION` | str | `vocab.2026-08-20` | no | Concatenated into the same column, so a vocabulary change is distinguishable from a prompt change |
-| `SCORING_PROMPT_VERSION` | str | `score.v2` | no | Part of `UNIQUE (posting_id, variant_id, prompt_version)` on `match_score`. **Bumping it makes every existing score a separate row rather than an update** — that is the intent, and it is also why bumping it triggers a rescore sweep |
+| `SCORING_PROMPT_VERSION` | str | `score.v1` | no | Part of `UNIQUE (posting_id, variant_id, prompt_version)` on `match_score`. **Bumping it makes every existing score a separate row rather than an update** — that is the intent, and it is also why bumping it triggers a rescore sweep. `score.v1`, not the `score.v2` this table first carried: the implementation is the first one, and starting at v2 would imply a v1 whose rows nobody could produce. The value written to the column is this string joined to the adjacency version (§9.2), because an adjacency edit changes every score it touches |
 
 ### 9.2 Vocabulary matching
 
@@ -431,14 +431,39 @@ changing.
 | `SKILL_TRIGRAM_THRESHOLD` | float 0–1 | `0.62` | Fewer fuzzy matches; more requirements fall through to the model, raising cost and lowering deterministic coverage | More false skill matches; coverage inflates on near-miss strings, which promotes bad fits into a queue the operator trusts |
 | `SKILL_ADJACENCY_MIN` | float 0–1 | `0.40` | Fewer `partial` credits; coverage understated | Adjacent-but-different skills score as partial; the gap list stops being honest |
 
+Adjacency itself is **data, not configuration**: one score per vocabulary
+`family`, in `scoring/adjacency.yaml`, carrying its own version. It is versioned
+separately from `skills.yaml` on purpose — adjacency changes what a score is,
+not what a requirement is, so an edit re-scores and reuses the extraction output
+(`MATCH_SCORING.md` §11.1) instead of invalidating `requirement.prompt_version`
+and forcing a full re-extraction. Families too coarse to score honestly are set
+to `0.00` there rather than omitted, with the reason beside each one: `platform`
+holds both `kubernetes` and `git`, and a single family score would let one earn
+credit for the other.
+
 ### 9.3 Composite score
 
 | Variable | Type | Default | Description and effect |
 |---|---|---|---|
 | `SCORING_BLEND_HARD` | float 0–1 | `0.80` | `w_hard` in the composite. Raising it makes hard-requirement coverage dominate — good for precision, and it will suppress straddle roles where a variant covers the interesting half. Lowering it lets a pile of `nice` matches carry a role over the line |
 | `SCORING_PARTIAL_CREDIT` | float 0–1 | `0.50` | Credit for `partial`. At `1.0` a partial is a match and the gap list becomes decorative; at `0.0` the honest-gap paragraph loses most of its material |
-| `SCORING_TIER_WEIGHTS` | map | `dream=1.10,strong=1.00,volume=0.90` | Multiplier `T` by `company.tier`. A wider spread makes tier, not fit, the ranking |
-| `SCORING_HARD_GATE_BANDS` | banded map | `0.60:1.00,0.40:0.85,0.00:0.65` | `G`: a multiplicative penalty for weak hard-requirement coverage. **This is what stops a role with 2 of 7 hard requirements ranking above one with 6 of 7 on the strength of `nice` matches.** Flattening it removes that protection |
+| `SCORING_TIER_WEIGHT_DREAM` | dec 0–2 | `1.10` | Multiplier `T` by `company.tier`. A wider spread makes tier, not fit, the ranking |
+| `SCORING_TIER_WEIGHT_STRONG` | dec 0–2 | `1.00` | |
+| `SCORING_TIER_WEIGHT_VOLUME` | dec 0–2 | `0.90` | |
+| `SCORING_HARD_GATE_PASS` | dec 0–1 | `0.60` | `H` at or above which `G` is 1.00 — the must-haves are genuinely covered |
+| `SCORING_HARD_GATE_WARN` | dec 0–1 | `0.40` | `H` at or above which `G` is the warn factor; below it, the fail factor |
+| `SCORING_HARD_GATE_WARN_FACTOR` | dec 0–1 | `0.85` | `G` in the middle band. Real gaps on the must-haves; apply with eyes open |
+| `SCORING_HARD_GATE_FAIL_FACTOR` | dec 0–1 | `0.65` | `G` below the warn floor. **This is what stops a role with 2 of 7 hard requirements ranking above one with 6 of 7 on the strength of `nice` matches.** Flattening it removes that protection |
+
+**Seven scalars, not the two composite strings this table first specified.**
+`SCORING_TIER_WEIGHTS=dream=1.10,...` and `SCORING_HARD_GATE_BANDS=0.60:1.00,...`
+are each a small parser, and a parser in a settings file is a class of failure
+this project has already paid for: `NoDecode` exists on the list fields because
+`pydantic-settings` JSON-decoded `IN,Remote` before any validator ran and died
+with "Expecting value: line 1 column 1", naming neither the key nor the format.
+A scalar is validated by `pydantic` for free, its bound is declared where it is
+read, and a typo names the key that is wrong. The cost is five more lines in
+`.env.example`, which is the cheaper side of that trade.
 | `SCORING_RECENCY_GRACE_DAYS` | int | `14` | Days before recency decay starts |
 | `SCORING_RECENCY_HALF_LIFE_DAYS` | int | `45` | Decay half-life |
 | `SCORING_RECENCY_FLOOR` | float 0–1 | `0.65` | Minimum `R`. **Never 0.** An old posting that fits perfectly should still be visible; recency is a tiebreak, not a gate |
@@ -450,7 +475,7 @@ changing.
 | `GENERATION_MIN_COMPOSITE` | float | `30.0` | Composite floor for creating a `review_item` at all. Below it, the posting stays queryable with its scores and gaps but never reaches the queue |
 | `GENERATION_DAILY_CAP` | int | `10` | Max drafts per day — one discovery run per day, so this is equivalently the per-run cap. The single name for this bound across every document; see §10.1 |
 | `RESCORE_MAX_AGE_DAYS` | int | `30` | Age at which the nightly sweep re-scores a posting |
-| `SCORING_MIN_HARD_REQUIREMENTS` | int | `1` | Extraction returning zero `hard` requirements is **not** scored as a perfect match; the posting is routed to `needs_manual_review` and the empty bucket is logged |
+| ~~`SCORING_MIN_HARD_REQUIREMENTS`~~ | — | — | **Not implemented, and deliberately not.** The behaviour is: extraction returning zero `hard` requirements is not scored as a perfect match; the posting is flagged for manual review and the empty bucket is logged. That is a rule, not a tunable. Setting it to `0` would mean "score a posting whose requirements we failed to read as a 100% match", which is the single most dangerous default in the formula (`scoring/service.py:plan_posting`) |
 
 ---
 
@@ -738,17 +763,21 @@ ALERT_FIDELITY_EXTRACT=false
 # --- scoring ---------------------------------------------------------
 EXTRACTION_PROMPT_VERSION=extract.v3
 SKILL_VOCAB_VERSION=vocab.2026-08-20
-SCORING_PROMPT_VERSION=score.v2
+SCORING_PROMPT_VERSION=score.v1
 SKILL_TRIGRAM_THRESHOLD=0.62
 SKILL_ADJACENCY_MIN=0.40
 SCORING_BLEND_HARD=0.80
 SCORING_PARTIAL_CREDIT=0.50
-SCORING_TIER_WEIGHTS=dream=1.10,strong=1.00,volume=0.90
-SCORING_HARD_GATE_BANDS=0.60:1.00,0.40:0.85,0.00:0.65
+SCORING_TIER_WEIGHT_DREAM=1.10
+SCORING_TIER_WEIGHT_STRONG=1.00
+SCORING_TIER_WEIGHT_VOLUME=0.90
+SCORING_HARD_GATE_PASS=0.60
+SCORING_HARD_GATE_WARN=0.40
+SCORING_HARD_GATE_WARN_FACTOR=0.85
+SCORING_HARD_GATE_FAIL_FACTOR=0.65
 SCORING_RECENCY_GRACE_DAYS=14
 SCORING_RECENCY_HALF_LIFE_DAYS=45
 SCORING_RECENCY_FLOOR=0.65
-SCORING_MIN_HARD_REQUIREMENTS=1
 GENERATION_MIN_COMPOSITE=30.0
 GENERATION_DAILY_CAP=10
 RESCORE_MAX_AGE_DAYS=30

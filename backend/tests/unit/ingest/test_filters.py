@@ -23,10 +23,22 @@ from scout_careers.ingest.filters import (
     PostingView,
     evaluate,
     parse_experience_years,
+    role_marker_hits,
 )
 from tests.conftest import make_settings
 
 JD = "We are hiring a backend engineer. " * 40  # comfortably over the minimum
+
+
+def body(text: str) -> str:
+    """Pad a snippet past ``MIN_DESCRIPTION_CHARS``.
+
+    The chain is ordered and `no_description` sits ahead of every predicate that
+    reads the body, so a short fixture silently tests the wrong rule — it fails
+    with `description_too_short`, or worse, passes for a reason the test never
+    named. Anything asserting on `role_domain` or `experience` goes through here.
+    """
+    return f"{text} {JD}"
 
 
 def posting(**overrides) -> PostingView:
@@ -302,6 +314,7 @@ def test_the_chain_is_exactly_what_it_should_be() -> None:
         "seniority",
         "location",
         "title_denylist",
+        "role_domain",
         "experience",
     ]
     assert len(CHAIN) == len({name for name, _ in CHAIN}), "duplicate predicate name"
@@ -475,3 +488,258 @@ def test_the_roles_a_title_denylist_would_have_wrongly_dropped_survive() -> None
     ):
         result = verdict(post=posting(title=title, description_text=junior_jd))
         assert result.passed is True, f"{title} was dropped for {result.reason}"
+
+
+# --------------------------------------------------------------------------
+# Domain: the predicate the title deny-list cannot replace
+# --------------------------------------------------------------------------
+
+
+# Padded past MIN_DESCRIPTION_CHARS with `JD`: the chain is ordered and
+# `no_description` sits ahead of `role_domain`, so a short body would test the
+# wrong predicate and pass for the wrong reason.
+GTM_BODY = body(
+    "You will own outbound pipeline generation, running prospecting sequences "
+    "and discovery calls. Strong qualification instincts, able to assess ICP "
+    "fit. Experience with Salesforce or similar GTM tooling. Carry a quota."
+)
+
+
+def test_a_go_to_market_advert_is_dropped_on_its_body() -> None:
+    """Its title is "Deployment Strategist" or "Growth Lead" — nothing a title
+    deny-list can match. Only the body says what the role is."""
+    verdict = evaluate(
+        posting(title="Deployment Strategist", description_text=GTM_BODY),
+        company(),
+        make_settings(),
+    )
+    assert not verdict.passed
+    assert (verdict.reason or "").startswith("role_domain:")
+
+
+def test_the_reason_names_the_markers_that_matched() -> None:
+    """A rejection the operator cannot argue with is a rejection they cannot tune.
+
+    The reason carries the terms, alphabetically so it is stable between runs,
+    and the *count* of the ones it had no room for. Seven markers and exactly
+    three would otherwise read identically — and that difference is the whole
+    judgement when deciding whether `FILTER_ROLE_MARKER_MIN` is set right.
+    """
+    reason = (
+        evaluate(
+            posting(title="Growth Lead", description_text=GTM_BODY), company(), make_settings()
+        ).reason
+        or ""
+    )
+    assert reason.startswith("role_domain:")
+    named = reason.removeprefix("role_domain:").split("+")
+    assert "icp" in named and "pipeline generation" in named
+    assert named[-1].endswith("more"), "the markers it could not name are still counted"
+
+
+def test_a_reason_that_fits_carries_no_overflow_note() -> None:
+    reason = (
+        evaluate(
+            posting(
+                title="Growth Lead",
+                description_text=body(
+                    "You will carry a quota, run prospecting sequences, and own the sales cycle."
+                ),
+            ),
+            company(),
+            make_settings(),
+        ).reason
+        or ""
+    )
+    assert reason == "role_domain:prospecting+quota+sales cycle"
+
+
+def test_one_incidental_marker_does_not_drop_an_engineering_role() -> None:
+    """The threshold is above one on purpose. An engineering advert mentions a
+    quota now and then, and a single accidental hit must not remove it."""
+    assert evaluate(
+        posting(
+            title="Backend Engineer",
+            description_text=body("You will work with the sales team on quota planning."),
+        ),
+        company(),
+        make_settings(),
+    ).passed
+
+
+def test_a_forward_deployed_role_survives() -> None:
+    """The role this predicate most has to not break.
+
+    CONFIGURATION.md already records that `strategist` and `solutions architect`
+    were kept out of the title deny-list because each cost a role worth seeing,
+    and the operator named forward-deployed engineering as something they would
+    apply for. These roles ask for Python and API integration; an account
+    executive asks for Salesforce and a quota.
+    """
+    assert evaluate(
+        posting(
+            title="Forward Deployed Engineer",
+            description_text=body(
+                "Work with enterprise customers to deploy our AI platform. Basic "
+                "proficiency in Python. Familiarity with API integration, sufficient "
+                "to prototype and demo. Comfort engaging in deal conversations."
+            ),
+        ),
+        company(),
+        make_settings(),
+    ).passed
+
+
+def test_the_predicate_can_be_switched_off() -> None:
+    assert evaluate(
+        posting(title="Growth Lead", description_text=GTM_BODY),
+        company(),
+        make_settings(filter_role_marker_min=0),
+    ).passed
+
+
+# --------------------------------------------------------------------------
+# role_marker_hits: one definition, two callers
+# --------------------------------------------------------------------------
+
+
+def test_the_hits_helper_and_the_predicate_agree() -> None:
+    """The diagnostic and the filter must not drift apart.
+
+    `filter markers` exists to tune `FILTER_ROLE_MARKER_MIN` against real
+    counts. If it computed hits its own way, the tuning would eventually be
+    done against a number the filter does not use — and the disagreement would
+    surface as a threshold that behaves differently from the tool that chose it.
+    """
+    settings = make_settings()
+    text = body("We run discovery calls, manage a quota and live in Salesforce.")
+    hits = role_marker_hits(text, settings)
+    assert set(hits) == {"discovery calls", "quota", "salesforce"}
+    assert len(hits) >= settings.filter_role_marker_min
+    verdict = evaluate(posting(description_text=text), company(), settings)
+    assert not verdict.passed
+    for marker in hits[:2]:
+        assert marker in (verdict.reason or "")
+
+
+def test_the_hits_helper_deduplicates() -> None:
+    """Distinct markers, not occurrences. An advert repeating "quota" eight
+    times states one thing about itself, and counting repetitions would let a
+    single word cross a threshold built to need several independent signals."""
+    settings = make_settings()
+    text = body("quota quota quota quota quota")
+    assert role_marker_hits(text, settings) == ("quota",)
+
+
+def test_an_engineering_posting_hits_nothing() -> None:
+    settings = make_settings()
+    text = body("Build async Python services on Postgres and Redis behind an API.")
+    assert role_marker_hits(text, settings) == ()
+
+
+def test_commission_is_not_a_marker() -> None:
+    """Removed on measurement, and pinned so it does not come back.
+
+    It reads like a sales word and it is compensation boilerplate. Against the
+    live corpus it matched roughly thirty genuine engineering roles — "Senior
+    Software Engineer, Core Platform", "Senior Machine Learning Engineer",
+    "Electrical Engineer, Actuator Test Infrastructure" — and caught nothing the
+    rest of the list did not already catch, because every commissioned role also
+    carries `quota` or `on-target earnings`.
+    """
+    settings = make_settings()
+    assert "commission" not in settings.filter_role_marker_deny
+    text = body("Compensation includes equity, an annual bonus and commission.")
+    assert role_marker_hits(text, settings) == ()
+
+
+def test_two_markers_now_reject() -> None:
+    """The threshold moved from three to two after all 66 postings sitting at
+    exactly two hits were read, and every one was go-to-market."""
+    settings = make_settings()
+    assert settings.filter_role_marker_min == 2
+    text = body("You will own a quota and work the deal cycle end to end.")
+    assert not evaluate(posting(description_text=text), company(), settings).passed
+
+
+def test_one_marker_still_survives() -> None:
+    """The rule that keeps "Engineering - Internal AI Transformation" — a
+    posting currently ranked fourth — in the corpus. It mentions Salesforce
+    once."""
+    settings = make_settings()
+    text = body("The platform integrates with Salesforce and a dozen other systems.")
+    assert len(role_marker_hits(text, settings)) == 1
+    assert evaluate(posting(description_text=text), company(), settings).passed
+
+
+# --------------------------------------------------------------------------
+# The title deny list, after `filter try-titles`
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Senior Payroll Accountant",
+        "Litigation Paralegal",
+        "Senior FP&A Analyst, Corporate Finance",
+        "Strategic Finance, GTM",
+        "Recruiting Coordinator (Contract)",
+        "Executive Assistant, R&D",
+        "People Analytics Lead - Recruiting",
+        "Brand Designer, Creative Studio",
+        "Lead Product Designer, Growth",
+        "ASIC Package SI/PI Engineer",
+        "Data Center Supply Planning Lead",
+        "Power Trading Lead",
+    ],
+)
+def test_a_whole_function_is_denied_by_title(title: str) -> None:
+    """Every one of these survived the go-to-market markers with zero hits.
+
+    They are catchable by title where the GTM roles were not — "Deployment
+    Strategist" contains no denied word, "Litigation Paralegal" is nothing but
+    denied words. Two different problems, two different predicates.
+    """
+    verdict = evaluate(posting(title=title), company(), make_settings())
+    assert not verdict.passed
+    # `title_keyword:<entry>`, not the chain's own name for the predicate. The
+    # reason column names the matched word, which is what makes a rejection
+    # arguable — the operator can see which entry did it.
+    assert (verdict.reason or "").startswith("title_keyword:")
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Full Stack Engineer - Internal Audit",
+        "Senior Software Engineer, Workers Runtime",
+        "Backend Engineer, Geo Team",
+        "Forward Deployed Engineer",
+        "Deployment Strategist",
+        "Software Engineer, R2 Gateway",
+    ],
+)
+def test_the_denied_functions_do_not_reach_engineering_titles(title: str) -> None:
+    """The guard on the whole exercise.
+
+    `internal audit` was simulated and rejected because it matched the first of
+    these — the same failure that got `audit` rejected before it. The last two
+    are pre-sales roles left deliberately alone: CONFIGURATION.md records that
+    the operator named forward-deployed engineering as something they would
+    apply for, and a title rule reaching them would cost exactly that.
+    """
+    assert evaluate(posting(title=title), company(), make_settings()).passed
+
+
+def test_no_deny_entry_is_dead() -> None:
+    """`copywriter` and `datacenter` were dropped for matching nothing.
+
+    An entry that never fires is indistinguishable from one that is wrong, and
+    it makes a hand-edited list longer to read for no removal. This cannot check
+    the live corpus, so it checks the weaker thing that still catches a paste
+    error: that no entry is empty or duplicated.
+    """
+    entries = make_settings().filter_keyword_deny
+    assert all(entry.strip() for entry in entries)
+    assert len(set(entries)) == len(entries)

@@ -1,0 +1,97 @@
+# Skill adjacency: how much credit a *related but not identical* competency earns.
+#
+# MATCH_SCORING.md §4.2 gives adjacency a job — "Kubernetes in production"
+# against someone who has deployed to ECS is neither met nor missing — but no
+# adjacency data. This file is that data, derived from the `family` field
+# already carried by every token in `extract/vocab/skills.yaml` rather than from
+# a second hand-written graph. One number per family instead of ~100 per-pair
+# scores: fewer things to keep true, and each is defensible in a sentence.
+#
+# **Versioned separately from the vocabulary, on purpose.** Adjacency changes
+# what a score is, not what a requirement is. Putting it in `skills.yaml` would
+# bump `vocab.*`, which is half of `requirement.prompt_version` — and would
+# therefore force a full re-extraction of every open posting (~₹2,900) to change
+# a number that extraction never reads. Instead this version joins
+# `SCORING_PROMPT_VERSION`, so an edit here re-scores and reuses the extraction
+# output, exactly as §11.1 specifies for a scoring-side change.
+#
+# ## Why some families score below the threshold
+#
+# `SKILL_ADJACENCY_MIN` is 0.40. A family scored under it produces no adjacency
+# at all, and several are deliberately there. The `platform` family holds
+# `kubernetes`, `docker`, `git`, `nginx`, `linux`, `terraform`, `ci_cd` and
+# `observability` — real neighbours and total strangers in one bucket. A flat
+# family score would let `git` earn half credit for a Kubernetes requirement,
+# which is worse than scoring it missing: it overstates coverage, and
+# MATCH_SCORING.md §3.2 is explicit that understating is the right direction to
+# be wrong in, because overstating tells the operator they are a fit when they
+# are not.
+#
+# So a family earns adjacency only where *any* two of its members are genuinely
+# substitutable for the purpose an employer names them for. Where they are not,
+# the honest answer is 0.00 and a gap the operator reads.
+#
+# Composites (`llm_engineering`, `fpna`, `embedded_systems`) already produce
+# partial credit through §4.2's member arithmetic, which is more precise than
+# anything here — it names which members are missing. Adjacency is the fallback
+# for tokens that do not decompose.
+
+version: adjacency.2026-09-07.1
+
+families:
+  # --- earns adjacency ---------------------------------------------------
+  cloud: 0.60
+  # aws / azure / gcp. The strongest case in the file: a requirement written
+  # "experience with GCP" is nearly always asking for cloud-native architecture
+  # rather than for GCP's particular console, and the operator has shipped
+  # production on two of the three anyway.
+
+  bi_tool: 0.60
+  # power_bi / tableau. Employers write "Power BI or equivalent" themselves.
+
+  frontend: 0.55
+  # frontend_general / react / nextjs. Next.js is React; `frontend_general`
+  # is the deliberately coarse token for "can build a UI".
+
+  finance: 0.50
+  # budgeting / forecasting / variance_analysis / fpna. Members of one
+  # discipline, and `fpna`'s composite arithmetic handles the precise case.
+
+  embedded: 0.50
+  # rtos / firmware / device_drivers / embedded_systems. Same, via that
+  # composite.
+
+  data: 0.45
+  # data_modelling / data_pipeline. Related work, distinct enough that this
+  # sits low.
+
+  database: 0.45
+  # mongodb / mysql / postgres / redis / vector_database. Weakest of the
+  # scoring families and the one most likely to be revisited: postgres~mysql is
+  # a fair trade, postgres~redis is not, and the family cannot tell them apart.
+  # Kept because a "MySQL" requirement against deep Postgres experience really
+  # is partial, and set low enough that it never carries a decision alone.
+
+  # --- earns nothing: below SKILL_ADJACENCY_MIN (0.40) --------------------
+  platform: 0.00
+  # kubernetes / docker / git / nginx / linux / terraform / ci_cd /
+  # observability. Neighbours and strangers in one bucket — `git` must never
+  # earn credit for a Kubernetes requirement.
+
+  language: 0.00
+  # c_lang~cpp is adjacent; python~sql is not. One number cannot say both.
+
+  backend: 0.00
+  # 13 tokens from `fastapi` to `system_design`. Far too coarse.
+
+  ai: 0.00
+  # `pytorch` and `rag` are not substitutes, and `llm_engineering`'s composite
+  # already covers the case that matters.
+
+  practice: 0.00
+  # agile / code_review / ownership / performance_tuning / security_practice /
+  # stakeholder_communication / testing. Unrelated to each other by design.
+
+  analysis: 0.00
+  finance_tool: 0.00
+  # Single-token families. No pair exists to be adjacent.

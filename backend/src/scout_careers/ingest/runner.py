@@ -85,6 +85,7 @@ from scout_careers.ingest.results import (
     resolve_run_status,
     source_results_payload,
 )
+from scout_careers.ingest.screen import screen_postings
 from scout_careers.mail.gmail import build_mail_reader, close_mail_reader
 from scout_careers.sources.base import MailReader, RawPosting, SourceAdapter, SourceResult
 from scout_careers.sources.http import (
@@ -325,6 +326,12 @@ class RunnerDeps:
     mail_reader: MailReader | None = None
     on_result: Callable[[SourceResult], None] | None = None
     dedupe: bool = True
+    #: Run stage ④ over the companies this run touched. Off in tests that are
+    #: about adapter isolation rather than persistence, for the same reason
+    #: ``dedupe`` is: both do a second pass over the run's session, and a test
+    #: proving one broken source does not abort a run should not also have to
+    #: stand up a session that can stream postings.
+    screen: bool = True
 
     @classmethod
     def build(cls, settings: Settings | None = None) -> RunnerDeps:
@@ -1074,12 +1081,24 @@ async def _execute(
     results = [outcomes[source.id].result for source in sources if source.id in outcomes]
     closed = sum(outcome.closed for outcome in outcomes.values())
 
+    touched = sorted({source.company_id for source in sources})
     superseded = 0
     if deps.dedupe and results:
-        superseded = await collapse_duplicates(
-            session, company_ids=sorted({source.company_id for source in sources})
-        )
+        superseded = await collapse_duplicates(session, company_ids=touched)
         await session.commit()
+
+    # Stage ④, and it must run after the collapse: the `superseded` predicate
+    # reads the flag dedup has just written, so screening first would judge a
+    # posting that is about to become a duplicate.
+    #
+    # Scoped to the companies this run touched. A full recompute belongs to
+    # `scout-careers filter apply`, where the operator has asked for it — a
+    # nightly run silently re-judging 7,000 postings would make an edited deny
+    # list take effect at 22:00 with nobody watching.
+    if deps.screen and results:
+        screened = await screen_postings(session, settings, company_ids=touched)
+        await session.commit()
+        log.info("run_screened", run_id=run_id, **screened.as_stats())
 
     stats = fold_results(
         results,

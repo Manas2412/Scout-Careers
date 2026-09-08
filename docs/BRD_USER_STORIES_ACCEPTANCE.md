@@ -196,7 +196,7 @@ requirements.
 
 | ID | Requirement |
 |---|---|
-| **R23** | WHEN a posting survives the deterministic filter THE SYSTEM SHALL extract its requirements by structured-output model call into `requirement` rows, each with `kind` ∈ {`hard`,`nice`,`responsibility`,`tool`}, `weight`, `ordinal`, `model` and `prompt_version`. |
+| **R23** | WHEN a posting survives the deterministic filter THE SYSTEM SHALL extract its requirements by structured-output model call into `requirement` rows, each with `kind` ∈ {`hard`,`nice`,`responsibility`,`tool`,`condition`}, `weight`, `ordinal`, `model` and `prompt_version`. |
 | **R24** | THE SYSTEM SHALL pass job-description text to the model as delimited data inside an explicit data boundary and SHALL NOT treat any instruction contained in that text as an instruction. |
 | **R25** | WHEN a requirement is extracted THE SYSTEM SHALL resolve it to a controlled-vocabulary token in `normalised_skill` via the three-stage resolver, and IF no token resolves THEN THE SYSTEM SHALL score the requirement `missing` with an explicit note and record the phrase as a vocabulary proposal rather than dropping it. |
 | **R26** | IF an extracted `evidence_span` is not found verbatim in the source text THEN THE SYSTEM SHALL retry once at temperature 0 and, on a second failure, route the posting to `needs_manual_review` and count the failure in `run_log.stats`. |

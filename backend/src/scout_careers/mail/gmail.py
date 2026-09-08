@@ -189,7 +189,7 @@ def build_query(*, label: str, senders: Sequence[str], since: datetime) -> str:
     Returns:
         A Gmail query string.
     """
-    terms = [f'label:"{label}"']
+    terms = [f'label:"{label}"'] if label else []
     if senders:
         joined = " OR ".join(senders)
         terms.append(f"from:({joined})")

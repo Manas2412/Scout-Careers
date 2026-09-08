@@ -1,0 +1,164 @@
+{
+  "key": "ai_platform",
+  "name": "AI Platform Engineer",
+  "target": "Infrastructure beneath AI products — serving, retrieval, evaluation, cost.",
+  "source_path": "/sessions/jolly-relaxed-goldberg/mnt/outputs/resume/Manas_Sisodia_AI_Platform.docx",
+  "content": {
+    "header": {
+      "name": "MANAS SISODIA",
+      "contact": "LinkedIn  |  9810904048  |  manassisodia3@gmail.com  |  GitHub"
+    },
+    "summary": "AI platform engineer who takes systems from architecture to production on both Azure and AWS — model serving, queue-backed inference, CI/CD, observability and cost. Owns the HLD, LLD and deployment design for four government platforms now running in production, including a multilingual assistant live on kheloindia.gov.in and a drafting system piloted in a live 2026 Parliament session. Re-platformed one service onto ECS Fargate and cut another's run-rate ~60%. National-level athlete and 7x hackathon placer.",
+    "skills": [
+      {
+        "label": "Cloud & DevOps",
+        "items": [
+          "Azure (App Service, Postgres Flexible, Managed Redis cluster, Service Bus, Blob, Document Intelligence, ACR, Managed Identity)",
+          "AWS (ECS Fargate, RDS, ECR, ALB + WAF, S3, Secrets Manager, EventBridge, IAM / OIDC, Bedrock)",
+          "Docker multi-stage",
+          "GitHub Actions",
+          "Jenkins",
+          "Nginx",
+          "Linux"
+        ]
+      },
+      {
+        "label": "Serving & Data",
+        "items": [
+          "Queue-backed inference (Service Bus + Redis pub/sub → SSE)",
+          "semantic and two-layer caching",
+          "pgvector (HNSW, IVFFlat)",
+          "pg_trgm",
+          "PostgreSQL",
+          "Redis (OSS cluster, RediSearch)",
+          "Alembic / Prisma migrations"
+        ]
+      },
+      {
+        "label": "AI / ML",
+        "items": [
+          "RAG architecture",
+          "LangGraph multi-agent orchestration",
+          "hybrid retrieval (RRF)",
+          "cross-encoder reranking",
+          "eval harness design",
+          "feature flags and kill switches",
+          "capacity and cost modelling"
+        ]
+      },
+      {
+        "label": "Backend",
+        "items": [
+          "Python",
+          "FastAPI",
+          "SQLAlchemy 2.0 (async)",
+          "Pydantic v2",
+          "Node.js",
+          "Next.js 14",
+          "TypeScript",
+          "Fastify",
+          "Prisma"
+        ]
+      },
+      {
+        "label": "Languages",
+        "items": [
+          "Python",
+          "TypeScript",
+          "JavaScript",
+          "SQL",
+          "C++"
+        ]
+      }
+    ],
+    "experience": [
+      {
+        "role": "Project Analyst",
+        "employer": "EY  (deployed to National e-Governance Division, MeitY)",
+        "location": "New Delhi",
+        "dates": "May 2026 – Present",
+        "context": "AI engineering for Government of India digital platforms — Ministry of Youth Affairs & Sports, Sports Authority of India, and Ministry of Corporate Affairs.",
+        "blocks": [
+          {
+            "title": "Khelo India Knowledge Assistant — live in production on kheloindia.gov.in",
+            "bullets": [
+              {
+                "id": "ai_platform.exp.0.0.0",
+                "text": "Owned the full Azure deployment: App Service API and worker off one image, Postgres Flexible with pgvector, Managed Redis in OSS cluster mode (hash-tagged keyspace for same-slot reads, plain client for pub/sub), Service Bus job queue, Blob ingestion and ACR with Managed Identity pull."
+              },
+              {
+                "id": "ai_platform.exp.0.0.1",
+                "text": "Built the streaming path — API enqueues a job, the worker publishes tokens to Redis pub/sub, the API relays SSE — plus a two-layer cache, idempotency keys and 14 feature flags including an instant env-flag kill switch for the agent graph, no redeploy required."
+              },
+              {
+                "id": "ai_platform.exp.0.0.2",
+                "text": "Modelled capacity and cost against real measurements: 10,000 daily users / 20,000 chats per hour, blended service time as a function of cache hit-rate, and a re-architecture that cut run-rate ~60% (₹9.4L → ₹3.5L per month); 532 offline tests and an eval harness that drives the deployed image over HTTP and records the shipped tag, git SHA and dirty flag on every run."
+              }
+            ]
+          },
+          {
+            "title": "MYAS Task Tracker & Khelo India Expenditure Tracker — internal platforms, in production",
+            "bullets": [
+              {
+                "id": "ai_platform.exp.0.1.0",
+                "text": "Authored the architecture, HLD/LLD and deployment design for both, then re-platformed the task tracker from EC2 + PM2 onto ECS Fargate (ARM64) + RDS Postgres 16 + ALB/WAF — private subnets with NAT egress, autoscaling 1–6 tasks at 60% target CPU, Secrets Manager injection, and EventBridge cron jobs."
+              },
+              {
+                "id": "ai_platform.exp.0.1.1",
+                "text": "Built a GitHub OIDC CI/CD pipeline with no stored AWS keys: typecheck / lint / audit gate, Buildx ARM64 image with layer cache, JSON-rewritten task definition, and Prisma migrations executed as a one-off in-VPC Fargate task that aborts the deploy on a non-zero exit; third-party actions pinned to commit SHAs. Provisioned via 15 committed CLI runbook scripts."
+              },
+              {
+                "id": "ai_platform.exp.0.1.2",
+                "text": "Shipped the expenditure platform (₹924 Cr of scheme budget, 14 regional centres) on ECS Express + RDS + Secrets Manager with the same OIDC pipeline, plus security hardening — scrypt hashing, timing-attack-resistant login, rate limiting, Helmet CSP and HSTS."
+              }
+            ]
+          },
+          {
+            "title": "PQ-Bot — Parliamentary Question drafting platform · MYAS / Sports Authority of India",
+            "bullets": [
+              {
+                "id": "ai_platform.exp.0.2.0",
+                "text": "Sole engineer on a ~60,000-LOC AWS Bedrock platform (95 endpoints, 34 tables, 33 migrations) piloted during the 2026 Parliament monsoon session; tuned the concurrency model — raised anyio worker limits, a shared fan-out executor, a 50-connection Bedrock pool and explicit transaction release before long LLM blocks so idle-in-transaction timeouts cannot kill connections."
+              },
+              {
+                "id": "ai_platform.exp.0.2.1",
+                "text": "Wrote the host-agnostic CI gate  driven by Jenkins off an OpenForge/Tuleap webhook, plus 21 feature flags, a Redis semantic cache and eval harnesses that gate releases; 312 backend tests green, SAST closed at zero critical findings."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "role": "Full Stack Developer Intern",
+        "employer": "Allatone Solutions Pvt. Ltd.",
+        "location": "Noida",
+        "dates": "Feb 2025 – Jun 2025",
+        "context": "Oracle Cloud Partner — 20+ enterprise clients including Aditya Birla Group, Adani, and Acko.",
+        "blocks": [
+          {
+            "title": "",
+            "bullets": [
+              {
+                "id": "ai_platform.exp.1.0.0",
+                "text": "Architected a Docker + GitHub Actions CI/CD pipeline on AWS EC2 + Nginx, cutting deploy time 80% (15 min to under 3) with zero-downtime rolling releases; built a real-time inventory backend (Node.js, PostgreSQL, Redis) eliminating ~4 hrs/day of ops overhead."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "projects": [],
+    "education": [
+      {
+        "qualification": "B.Tech — Electronics and Communication Engineering  ·  GGSIPU, Delhi",
+        "dates": "2021 – 2025"
+      }
+    ],
+    "achievements": [
+      "7x hackathon placer — including 1st Place, UHI Hackathon (Spectrum Slam): UHI-compliant mental health platform, 1st among 200+ teams.",
+      "2nd Place — BVP-HEX Hackathon | Blockchain-based supply chain traceability system.",
+      "Codeforces Rating 1615 — top ~15% globally across rated competitive programming rounds."
+    ]
+  },
+  "skill_set": []
+}

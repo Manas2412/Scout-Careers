@@ -200,7 +200,7 @@ completed stage is a no-op.
         │
         ▼──────────────────────────────── first token spent below this line
  ⑤  EXTRACT       LLM structured output → Requirement[]
-                  kinds: hard | nice | responsibility | tool
+                  kinds: hard | nice | responsibility | tool | condition
                   every evidence_span must appear verbatim in the JD, or the
                   whole extraction is discarded and retried once at temp 0
                   skill normalisation is a versioned vocabulary lookup, not a call

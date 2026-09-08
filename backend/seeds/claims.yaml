@@ -1,0 +1,590 @@
+# The claims ledger.
+#
+# Nothing may be asserted in a generated document unless it resolves to a row
+# here — and scoring depends on it before any document exists: MATCH_SCORING.md
+# §4.2 refuses to let a *quantified* résumé bullet prove a requirement unless it
+# cites claims. That is the interlock the whole system is built on. Letting this
+# file rot lowers the operator's own match scores.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# EVERY ROW BELOW IS A DRAFT. It was read off the résumé bullets, not verified.
+#
+# Set `verdict` on each one:
+#
+#   verdict: yes   →  approved. Seeded, and usable as proof by scoring and by
+#                     any generated document.
+#   verdict: no    →  rejected. Not seeded at all. This is the DEFAULT, so a row
+#                     nobody has looked at is never written — the ledger's job is
+#                     to refuse what it cannot vouch for, and that only works if
+#                     silence means refusal.
+#
+# The question while reviewing is not "did I write this?" but:
+#
+#         if an interviewer asked me to show them, could I?
+#
+# `evidence_ref` is OPTIONAL and worth adding where it matters. A bare `yes`
+# records that you personally vouched for the figure — true today, and no help
+# to anyone in a year. A reference records where it can be checked:
+#
+#   evidence_ref: "psql khelo_prod -c 'select count(*) from document' → 206"
+#   evidence_ref: "CI run #412 on main, 2026-09-01"
+#   evidence_ref: "https://codeforces.com/profile/<handle>"
+#
+# Anything supplied has to be a real reference: TODO, TBD, N/A, ?, - and
+# anything under ten characters are refused on an approved row.
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# confidentiality:
+#   public      — safe in any document sent anywhere.
+#   internal    — fine on a résumé, not for publication.
+#   restricted  — NEVER emitted into a document sent outside an allow-listed
+#                 employer. Ministry cost and budget figures are drafted here.
+#                 A restricted claim still earns coverage when scoring, so the
+#                 bullet keeps its value; it is only the emission that is gated.
+#
+# verified_at is the date YOU checked it, not the date it was true.
+
+claims:
+  # ── Khelo India Knowledge Assistant ─────────────────────────────────────
+  - key: khelo.documents
+    statement: Corpus of 206 source documents behind the citizen assistant.
+    metric_value: "206"
+    metric_unit: documents
+    project: Khelo India Knowledge Assistant
+    verdict: no
+    confidentiality: internal
+    tags: [rag, corpus]
+    verified_at: 2026-09-07
+
+  - key: khelo.chunks
+    statement: Corpus chunked into 11,611 retrievable passages.
+    metric_value: "11611"
+    metric_unit: chunks
+    project: Khelo India Knowledge Assistant
+    verdict: no
+    confidentiality: internal
+    tags: [rag, corpus]
+    verified_at: 2026-09-07
+
+  - key: khelo.languages
+    statement: Twelve languages served, nine of them voice-enabled, via Bhashini with Sarvam fallback.
+    metric_value: "12"
+    metric_unit: languages
+    project: Khelo India Knowledge Assistant
+    verdict: yes
+    confidentiality: internal
+    tags: [multilingual]
+    verified_at: 2026-09-07
+
+  - key: khelo.hypothetical_questions
+    statement: 86,000 generated hypothetical questions indexed alongside content chunks for hybrid retrieval.
+    metric_value: "86000"
+    metric_unit: questions
+    project: Khelo India Knowledge Assistant
+    verdict: yes
+    confidentiality: internal
+    tags: [rag, retrieval]
+    verified_at: 2026-09-07
+
+  - key: khelo.answer_correctness
+    statement: Judged answer correctness of 3.9 out of 4 on the evaluation bank.
+    metric_value: "3.9"
+    metric_unit: rating_out_of_4
+    project: Khelo India Knowledge Assistant
+    verdict: yes
+    confidentiality: internal
+    tags: [evaluation]
+    verified_at: 2026-09-07
+
+  - key: khelo.eval_bank
+    statement: Evaluation bank of 213 cases, measured across 28 archived runs.
+    metric_value: "213"
+    metric_unit: cases
+    project: Khelo India Knowledge Assistant
+    verdict: yes
+    confidentiality: internal
+    tags: [evaluation]
+    verified_at: 2026-09-07
+
+  # The cost figures. Drafted `restricted`: these are Ministry run-rate numbers.
+  # They still earn coverage when scoring — only emission into a document is
+  # gated — so nothing is lost by keeping them out of what gets sent.
+  - key: khelo.cost_reduction
+    statement: Production run-rate cut by roughly 60% by re-architecting the stack.
+    metric_value: "60"
+    metric_unit: percent
+    project: Khelo India Knowledge Assistant
+    verdict: yes
+    confidentiality: restricted
+    tags: [cost, architecture]
+    verified_at: 2026-09-07
+
+  - key: khelo.run_rate
+    statement: Monthly run-rate reduced from ₹9.4L to ₹3.5L.
+    metric_value: "9.4 -> 3.5"
+    metric_unit: lakh_inr_per_month
+    project: Khelo India Knowledge Assistant
+    verdict: yes
+    confidentiality: restricted
+    tags: [cost]
+    verified_at: 2026-09-07
+
+  - key: khelo.cost_per_query
+    statement: Blended cost of roughly ₹1.35 per query after re-architecture.
+    metric_value: "1.35"
+    metric_unit: inr_per_query
+    project: Khelo India Knowledge Assistant
+    verdict: yes
+    confidentiality: restricted
+    tags: [cost]
+    verified_at: 2026-09-07
+
+  # A design target, not a measured load. Worth stating as such: an interviewer
+  # who asks "did it serve 10,000?" should get the honest answer.
+  - key: khelo.capacity_target
+    statement: Capacity modelled for 10,000 daily users and 20,000 chats per hour against measured service times.
+    metric_value: "10000"
+    metric_unit: daily_users_design_target
+    project: Khelo India Knowledge Assistant
+    verdict: yes
+    confidentiality: internal
+    tags: [capacity, design_target]
+    verified_at: 2026-09-07
+
+  - key: khelo.offline_tests
+    statement: 532 offline tests covering the service and agent graph.
+    metric_value: "532"
+    metric_unit: tests
+    project: Khelo India Knowledge Assistant
+    verdict: yes
+    confidentiality: internal
+    tags: [testing]
+    verified_at: 2026-09-07
+
+  - key: khelo.feature_flags
+    statement: Fourteen runtime feature flags including an instant kill switch requiring no redeploy.
+    metric_value: "14"
+    metric_unit: flags
+    project: Khelo India Knowledge Assistant
+    verdict: no
+    confidentiality: internal
+    tags: [operations]
+    verified_at: 2026-09-07
+
+  - key: khelo.engineering_docs
+    statement: 47-document engineering set spanning HLD, security architecture, acceptance criteria and SOP.
+    metric_value: "47"
+    metric_unit: documents
+    project: Khelo India Knowledge Assistant
+    verdict: yes
+    confidentiality: internal
+    tags: [documentation]
+    verified_at: 2026-09-07
+
+  # ── PQ-Bot ───────────────────────────────────────────────────────────────
+  - key: pqbot.loc
+    statement: Roughly 60,000 lines of Python, written as sole engineer.
+    metric_value: "60000"
+    metric_unit: lines_of_code
+    project: PQ-Bot
+    verdict: yes
+    confidentiality: internal
+    tags: [scale, ownership]
+    verified_at: 2026-09-07
+
+  - key: pqbot.endpoints
+    statement: 95 REST endpoints.
+    metric_value: "95"
+    metric_unit: endpoints
+    project: PQ-Bot
+    verdict: yes
+    confidentiality: internal
+    tags: [scale, api]
+    verified_at: 2026-09-07
+
+  - key: pqbot.tables
+    statement: 34 Postgres tables across 33 Alembic migrations.
+    metric_value: "34"
+    metric_unit: tables
+    project: PQ-Bot
+    verdict: no
+    confidentiality: internal
+    tags: [scale, database]
+    verified_at: 2026-09-07
+
+  - key: pqbot.config_settings
+    statement: 144 configuration settings on one Settings object.
+    metric_value: "144"
+    metric_unit: settings
+    project: PQ-Bot
+    verdict: no
+    confidentiality: internal
+    tags: [configuration]
+    verified_at: 2026-09-07
+
+  - key: pqbot.corpus
+    statement: Replies grounded in a corpus of 702 previously tabled Lok Sabha and Rajya Sabha answers.
+    metric_value: "702"
+    metric_unit: documents
+    project: PQ-Bot
+    verdict: yes
+    confidentiality: internal
+    tags: [rag, corpus]
+    verified_at: 2026-09-07
+
+  - key: pqbot.tests
+    statement: 312 backend tests green.
+    metric_value: "312"
+    metric_unit: tests
+    project: PQ-Bot
+    verdict: yes
+    confidentiality: internal
+    tags: [testing]
+    verified_at: 2026-09-07
+
+  - key: pqbot.sast_clean
+    statement: SAST closed at zero critical findings.
+    metric_value: "0"
+    metric_unit: critical_findings
+    project: PQ-Bot
+    verdict: yes
+    confidentiality: internal
+    tags: [security]
+    verified_at: 2026-09-07
+
+  - key: pqbot.accessibility_audit
+    statement: GIGW / WCAG 2.2 AA pre-audit with 15 of 23 findings remediated.
+    metric_value: "15 of 23"
+    metric_unit: findings_remediated
+    project: PQ-Bot
+    verdict: no
+    confidentiality: internal
+    tags: [accessibility, compliance]
+    verified_at: 2026-09-07
+
+  - key: pqbot.feature_flags
+    statement: Twenty-one feature flags gating the drafting path.
+    metric_value: "21"
+    metric_unit: flags
+    project: PQ-Bot
+    verdict: no
+    confidentiality: internal
+    tags: [operations]
+    verified_at: 2026-09-07
+
+  - key: pqbot.pipeline_stages
+    statement: Ten-stage retrieval pipeline with semantic cache, planner, reranking and recency blending.
+    metric_value: "10"
+    metric_unit: stages
+    project: PQ-Bot
+    verdict: yes
+    confidentiality: internal
+    tags: [rag, architecture]
+    verified_at: 2026-09-07
+
+  - key: pqbot.connection_pool
+    statement: Fifty-connection Bedrock pool with explicit transaction release before long model calls.
+    metric_value: "50"
+    metric_unit: connections
+    project: PQ-Bot
+    verdict: yes
+    confidentiality: internal
+    tags: [concurrency, performance]
+    verified_at: 2026-09-07
+
+  - key: pqbot.pilot
+    statement: Piloted during the 2026 Parliament monsoon session.
+    metric_value: "2026"
+    metric_unit: session_year
+    project: PQ-Bot
+    verdict: no
+    confidentiality: internal
+    tags: [delivery]
+    verified_at: 2026-09-07
+
+  # ── MYAS Task Tracker and Expenditure Tracker ────────────────────────────
+  - key: myas.scheme_budget
+    statement: Expenditure platform tracks ₹924 crore of scheme budget.
+    metric_value: "924"
+    metric_unit: crore_inr
+    project: Khelo India Expenditure Tracker
+    verdict: yes
+    confidentiality: restricted
+    tags: [scale, finance]
+    verified_at: 2026-09-07
+
+  - key: myas.regional_centres
+    statement: Budget tracked across 14 regional centres.
+    metric_value: "14"
+    metric_unit: centres
+    project: Khelo India Expenditure Tracker
+    verdict: no
+    confidentiality: internal
+    tags: [scale]
+    verified_at: 2026-09-07
+
+  - key: myas.prisma_models
+    statement: 26 Prisma models and 94 server actions in the Next.js application layer.
+    metric_value: "26"
+    metric_unit: models
+    project: MYAS Task Tracker
+    verdict: yes
+    confidentiality: internal
+    tags: [scale, backend]
+    verified_at: 2026-09-07
+
+  - key: myas.rbac_roles
+    statement: Hierarchy-driven RBAC across nine roles.
+    metric_value: "9"
+    metric_unit: roles
+    project: MYAS Task Tracker
+    verdict: yes
+    confidentiality: internal
+    tags: [security, rbac]
+    verified_at: 2026-09-07
+
+  - key: myas.autoscaling
+    statement: ECS Fargate autoscaling between one and six tasks at 60% target CPU.
+    metric_value: "1-6"
+    metric_unit: tasks
+    project: MYAS Task Tracker
+    verdict: yes
+    confidentiality: internal
+    tags: [infrastructure]
+    verified_at: 2026-09-07
+
+  - key: myas.runbook_scripts
+    statement: Provisioning captured in 15 committed CLI runbook scripts.
+    metric_value: "15"
+    metric_unit: scripts
+    project: MYAS Task Tracker
+    verdict: no
+    confidentiality: internal
+    tags: [infrastructure, documentation]
+    verified_at: 2026-09-07
+
+  # ── PMIS (AI scoping) ────────────────────────────────────────────────────
+  - key: pmis.scope_document
+    statement: Authored a 12,000-word AI Scope Document across 14 sections and 24 tables.
+    metric_value: "12000"
+    metric_unit: words
+    project: Prime Minister Internship Scheme
+    verdict: yes
+    confidentiality: restricted
+    tags: [consulting, documentation]
+    verified_at: 2026-09-07
+
+  - key: pmis.feasibility_assessment
+    statement: 14-page Feasibility Assessment rating 22 interventions on a four-tier rubric.
+    metric_value: "22"
+    metric_unit: interventions
+    project: Prime Minister Internship Scheme
+    verdict: no
+    confidentiality: restricted
+    tags: [consulting]
+    verified_at: 2026-09-07
+
+  - key: pmis.use_case_consolidation
+    statement: Consolidated 19 use cases into 8 features on 6 shared building blocks.
+    metric_value: "19 -> 8"
+    metric_unit: use_cases
+    project: Prime Minister Internship Scheme
+    verdict: yes
+    confidentiality: restricted
+    tags: [consulting, architecture]
+    verified_at: 2026-09-07
+
+  - key: pmis.effort_estimate
+    statement: Reconciled a 144 person-month estimate the source note had left unexplained.
+    metric_value: "144"
+    metric_unit: person_months
+    project: Prime Minister Internship Scheme
+    verdict: no
+    confidentiality: restricted
+    tags: [consulting, estimation]
+    verified_at: 2026-09-07
+
+  - key: pmis.benchmarking
+    statement: Benchmarked 13 international youth-employment programmes, tiered by comparability.
+    metric_value: "13"
+    metric_unit: programmes
+    project: Prime Minister Internship Scheme
+    verdict: no
+    confidentiality: restricted
+    tags: [consulting, research]
+    verified_at: 2026-09-07
+
+  - key: pmis.targets
+    statement: Set falsifiable targets against dated baselines — offer-to-join 10% to 13-14%, completion of joiners 46% to 60%.
+    metric_value: "10 -> 13-14"
+    metric_unit: percent
+    project: Prime Minister Internship Scheme
+    verdict: no
+    confidentiality: restricted
+    tags: [consulting, measurement]
+    verified_at: 2026-09-07
+
+  - key: pmis.escalations
+    statement: Ten decisions escalated to the Ministry, four of them Phase-1 blocking.
+    metric_value: "10"
+    metric_unit: decisions
+    project: Prime Minister Internship Scheme
+    verdict: no
+    confidentiality: restricted
+    tags: [consulting, governance]
+    verified_at: 2026-09-07
+
+  # ── Scout (internal bid discovery) ───────────────────────────────────────
+  - key: scout.tests
+    statement: 190 tests over the crawler and classification service.
+    metric_value: "190"
+    metric_unit: tests
+    project: Scout
+    verdict: no
+    confidentiality: internal
+    tags: [testing]
+    verified_at: 2026-09-07
+
+  - key: scout.adrs
+    statement: 31 architecture decision records.
+    metric_value: "31"
+    metric_unit: records
+    project: Scout
+    verdict: yes
+    confidentiality: internal
+    tags: [documentation, architecture]
+    verified_at: 2026-09-07
+
+  - key: scout.scoring_model
+    statement: Five-parameter weighted scoring model qualifying tenders against practice fit.
+    metric_value: "5"
+    metric_unit: parameters
+    project: Scout
+    verdict: no
+    confidentiality: internal
+    tags: [scoring]
+    verified_at: 2026-09-07
+
+  # ── Allatone Solutions (internship) ──────────────────────────────────────
+  - key: allatone.deploy_time
+    statement: Deploy time cut 80%, from 15 minutes to under 3.
+    metric_value: "80"
+    metric_unit: percent
+    project: Allatone Solutions
+    verdict: yes
+    confidentiality: internal
+    tags: [ci_cd, performance]
+    verified_at: 2026-09-07
+
+  - key: allatone.ops_overhead
+    statement: Roughly 4 hours per day of operations overhead eliminated.
+    metric_value: "4"
+    metric_unit: hours_per_day
+    project: Allatone Solutions
+    verdict: no
+    confidentiality: internal
+    tags: [automation]
+    verified_at: 2026-09-07
+
+  - key: allatone.reconciliation_workflows
+    statement: Three manual reconciliation workflows automated.
+    metric_value: "3"
+    metric_unit: workflows
+    project: Allatone Solutions
+    verdict: no
+    confidentiality: internal
+    tags: [automation]
+    verified_at: 2026-09-07
+
+  - key: allatone.permission_consolidation
+    statement: Fifteen or more scattered permission checks consolidated into one JWT RBAC middleware layer.
+    metric_value: "15"
+    metric_unit: checks
+    project: Allatone Solutions
+    verdict: yes
+    confidentiality: internal
+    tags: [security, refactoring]
+    verified_at: 2026-09-07
+
+  - key: allatone.clients
+    statement: Oracle Cloud partner serving 20+ enterprise clients including Aditya Birla Group, Adani and Acko.
+    metric_value: "20"
+    metric_unit: clients
+    project: Allatone Solutions
+    verdict: yes
+    confidentiality: public
+    tags: [context]
+    verified_at: 2026-09-07
+
+  # ── 8Byte (personal project) ─────────────────────────────────────────────
+  - key: 8byte.throughput
+    statement: Event-driven market data pipeline scaled to 300+ events per second across three upstream sources.
+    metric_value: "300"
+    metric_unit: events_per_second
+    project: 8Byte
+    verdict: yes
+    confidentiality: public
+    tags: [performance, streaming]
+    verified_at: 2026-09-07
+
+  - key: 8byte.cache_reduction
+    statement: External API calls cut roughly 60% with read-through Redis caching.
+    metric_value: "60"
+    metric_unit: percent
+    project: 8Byte
+    verdict: yes
+    confidentiality: public
+    tags: [caching, performance]
+    verified_at: 2026-09-07
+
+  - key: 8byte.ws_latency
+    statement: Sub-300ms WebSocket latency across decoupled API, worker and WebSocket layers.
+    metric_value: "300"
+    metric_unit: milliseconds
+    project: 8Byte
+    verdict: yes
+    confidentiality: public
+    tags: [performance, realtime]
+    verified_at: 2026-09-07
+
+  # ── BetterStack (personal project) ───────────────────────────────────────
+  - key: betterstack.endpoints
+    statement: 100+ endpoints monitored at roughly 500 jobs per minute.
+    metric_value: "100"
+    metric_unit: endpoints
+    project: BetterStack
+    verdict: yes
+    confidentiality: public
+    tags: [monitoring, scale]
+    verified_at: 2026-09-07
+
+  - key: betterstack.workers
+    statement: 20+ concurrent BullMQ workers at under 200ms check latency.
+    metric_value: "20"
+    metric_unit: workers
+    project: BetterStack
+    verdict: yes
+    confidentiality: public
+    tags: [concurrency, performance]
+    verified_at: 2026-09-07
+
+  # ── Personal record ──────────────────────────────────────────────────────
+  - key: personal.codeforces
+    statement: Codeforces rating 1615, roughly the top 15% globally across rated rounds.
+    metric_value: "1615"
+    metric_unit: rating
+    project: Competitive programming
+    verdict: yes
+    confidentiality: public
+    tags: [achievement]
+    verified_at: 2026-09-07
+
+  - key: personal.hackathons
+    statement: Seven hackathon placings, including 1st at the UHI Hackathon out of 200+ teams.
+    metric_value: "7"
+    metric_unit: placings
+    project: Hackathons
+    verdict: yes
+    confidentiality: public
+    tags: [achievement]
+    verified_at: 2026-09-07

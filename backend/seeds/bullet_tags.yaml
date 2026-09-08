@@ -1,0 +1,234 @@
+# Per-bullet tags: which vocabulary skills a resume line proves, and which
+# ledger claims back the numbers in it.
+#
+# Hand-written on purpose. Deriving them would mean resolving free prose against
+# the vocabulary — the job the extractor does on the demand side, and does
+# imperfectly. A wrong tag here does not merely mis-rank a posting: it puts an
+# unbacked number into a document sent to an employer.
+#
+# Tags live here and ONLY here. `seeds/variants/*.json` stay a plain
+# transcription of the .docx — `scripts/variants-from-docx.py` overwrites them
+# wholesale on every resume edit, so a tag written into one would be destroyed
+# by an ordinary edit, in silence. `seed variants` merges this file into
+# `content` on the way to the database instead.
+#
+# Keys are bullet IDs, which are positional: `{variant}.exp.{role}.{block}.{n}`
+# and `{variant}.proj.{project}.{n}`. Reordering a resume renumbers them, so
+# `seed variants` refuses any ID here that names no bullet — otherwise an
+# orphaned tag would move its claims onto whichever line inherited the number.
+#
+# `claims` may cite only APPROVED claims in seeds/claims.yaml. A bullet whose
+# numbers rest on rejected claims carries none — under MATCH_SCORING.md §4.2 it
+# degrades to `partial` rather than proving a requirement outright. That is the
+# honest outcome, and the operator chose it: re-approving a claim with a real
+# evidence reference is what upgrades the bullet, not editing this file.
+
+bullets:
+  # ------------------------------------------------------------------ ai_enterprise
+  ai_enterprise.exp.0.0.0:
+    skills: [rag, azure, llm_engineering, nlp, vector_database, system_design, security_practice]
+    claims: [khelo.languages, khelo.capacity_target]
+  ai_enterprise.exp.0.0.1:
+    skills: [llm_engineering, llm_evaluation, performance_tuning, system_design]
+    claims:
+      - khelo.cost_reduction
+      - khelo.run_rate
+      - khelo.cost_per_query
+      - khelo.answer_correctness
+      - khelo.eval_bank
+  ai_enterprise.exp.0.0.2:
+    skills: [rag, vector_database, postgres, agentic_workflows, testing, llm_engineering]
+    claims: [khelo.hypothetical_questions, khelo.offline_tests, khelo.engineering_docs]
+  ai_enterprise.exp.0.1.0:
+    skills: [python, rest_api, postgres, rag, system_design, ownership]
+    claims: [pqbot.loc, pqbot.endpoints, pqbot.corpus]
+  ai_enterprise.exp.0.1.1:
+    skills: [aws, llm_engineering, rag, sql, security_practice, llm_evaluation]
+    claims: [pqbot.pipeline_stages]
+  ai_enterprise.exp.0.1.2:
+    skills: [testing, security_practice, agile]
+    claims: [pqbot.tests, pqbot.sast_clean]
+  ai_enterprise.exp.0.2.0:
+    skills: [stakeholder_communication, system_design, data_analysis]
+    claims: [pmis.scope_document, pmis.use_case_consolidation]
+  ai_enterprise.exp.0.2.1:
+    # Ten decisions escalated to the Ministry — `pmis.escalations` is rejected,
+    # so the number stands unbacked and this line proves shape, not scale.
+    skills: [stakeholder_communication, system_design]
+    claims: []
+  ai_enterprise.exp.1.0.0:
+    skills: [docker, ci_cd, aws, nginx, node_backend, postgres, redis]
+    claims: [allatone.deploy_time]
+
+  # ------------------------------------------------------------------- ai_platform
+  ai_platform.exp.0.0.0:
+    skills: [azure, postgres, redis, message_queue, docker, vector_database, system_design, security_practice]
+    claims: []
+  ai_platform.exp.0.0.1:
+    # 14 feature flags — `khelo.feature_flags` is rejected.
+    skills: [redis, message_queue, realtime_transport, distributed_systems, system_design]
+    claims: []
+  ai_platform.exp.0.0.2:
+    skills: [performance_tuning, system_design, testing, llm_evaluation]
+    claims: [khelo.capacity_target, khelo.cost_reduction, khelo.run_rate, khelo.offline_tests]
+  ai_platform.exp.0.1.0:
+    skills: [aws, system_design, postgres, docker, security_practice]
+    claims: [myas.autoscaling]
+  ai_platform.exp.0.1.1:
+    # 15 committed CLI runbook scripts — `myas.runbook_scripts` is rejected.
+    skills: [ci_cd, aws, docker, security_practice, orm]
+    claims: []
+  ai_platform.exp.0.1.2:
+    skills: [aws, security_practice, node_backend, ci_cd, postgres]
+    claims: [myas.scheme_budget]
+  ai_platform.exp.0.2.0:
+    skills: [python, aws, performance_tuning, postgres, rest_api, ownership, llm_engineering]
+    claims: [pqbot.loc, pqbot.endpoints, pqbot.connection_pool]
+  ai_platform.exp.0.2.1:
+    skills: [ci_cd, redis, testing, llm_evaluation, security_practice]
+    claims: [pqbot.tests, pqbot.sast_clean]
+  ai_platform.exp.1.0.0:
+    skills: [docker, ci_cd, aws, nginx, node_backend, postgres, redis]
+    claims: [allatone.deploy_time]
+
+  # -------------------------------------------------------------------- ai_product
+  ai_product.exp.0.0.0:
+    skills: [rag, azure, llm_engineering, nlp, message_queue, redis, realtime_transport, vector_database]
+    claims: [khelo.languages]
+  ai_product.exp.0.0.1:
+    skills: [rag, vector_database, postgres, llm_evaluation, llm_engineering]
+    claims: [khelo.hypothetical_questions, khelo.answer_correctness, khelo.eval_bank]
+  ai_product.exp.0.0.2:
+    skills: [agentic_workflows, llm_engineering, rest_api, testing, rag]
+    claims:
+      - khelo.offline_tests
+      - khelo.cost_reduction
+      - khelo.run_rate
+      - khelo.cost_per_query
+      - khelo.capacity_target
+  ai_product.exp.0.1.0:
+    skills: [python, rest_api, rag, postgres, ownership]
+    claims: [pqbot.loc, pqbot.endpoints, pqbot.corpus]
+  ai_product.exp.0.1.1:
+    skills: [rag, aws, llm_engineering, vector_database, prompt_engineering]
+    claims: [pqbot.pipeline_stages]
+  ai_product.exp.0.1.2:
+    skills: [sql, security_practice, llm_engineering, testing, llm_evaluation]
+    claims: [pqbot.tests, pqbot.sast_clean]
+  ai_product.exp.0.2.0:
+    skills: [aws, system_design, ci_cd, postgres, docker]
+    claims: [myas.scheme_budget]
+  ai_product.exp.1.0.0:
+    skills: [docker, ci_cd, aws, nginx]
+    claims: [allatone.deploy_time]
+  ai_product.exp.1.0.1:
+    # 3 reconciliation workflows and ~4 hrs/day both rest on rejected claims.
+    skills: [node_backend, postgres, redis, security_practice, rest_api]
+    claims: [allatone.permission_consolidation]
+
+  # ----------------------------------------------------------------------- backend
+  backend.exp.0.0.0:
+    skills: [fastapi, python, redis, message_queue, realtime_transport, distributed_systems]
+    claims: []
+  backend.exp.0.0.1:
+    skills: [redis, performance_tuning, system_design, testing]
+    claims: [khelo.capacity_target, khelo.cost_reduction, khelo.run_rate, khelo.offline_tests]
+  backend.exp.0.1.0:
+    # 34 tables and 144 config settings are rejected claims; LOC and endpoints hold.
+    skills: [python, rest_api, postgres, ownership]
+    claims: [pqbot.loc, pqbot.endpoints]
+  backend.exp.0.1.1:
+    skills: [python, performance_tuning, postgres, distributed_systems]
+    claims: [pqbot.connection_pool]
+  backend.exp.0.1.2:
+    skills: [sql, security_practice, testing, postgres]
+    claims: [pqbot.tests, pqbot.sast_clean]
+  backend.exp.0.2.0:
+    skills: [aws, system_design, postgres, docker, security_practice]
+    claims: [myas.autoscaling]
+  backend.exp.0.2.1:
+    skills: [ci_cd, aws, docker, security_practice]
+    claims: [myas.scheme_budget]
+  backend.exp.0.3.0:
+    # 190 tests and the five-parameter scoring model are rejected claims.
+    skills: [python, data_pipeline, testing, system_design]
+    claims: [scout.adrs]
+  backend.exp.1.0.0:
+    skills: [docker, ci_cd, aws, nginx, node_backend, postgres, redis]
+    claims: [allatone.deploy_time]
+  backend.proj.0.0:
+    skills: [data_pipeline, redis, distributed_systems, message_queue, performance_tuning]
+    claims: [8byte.throughput]
+  backend.proj.0.1:
+    skills: [redis, realtime_transport, performance_tuning, microservices]
+    claims: [8byte.cache_reduction, 8byte.ws_latency]
+  backend.proj.1.0:
+    skills: [observability, node_backend, message_queue, performance_tuning, distributed_systems]
+    claims: [betterstack.endpoints, betterstack.workers]
+
+  # ---------------------------------------------------------------------- combined
+  combined.exp.0.0.0:
+    skills: [rag, vector_database, postgres, llm_engineering, nlp, llm_evaluation]
+    claims:
+      - khelo.languages
+      - khelo.hypothetical_questions
+      - khelo.answer_correctness
+      - khelo.eval_bank
+  combined.exp.0.0.1:
+    skills: [fastapi, python, redis, message_queue, realtime_transport, performance_tuning]
+    claims: [khelo.cost_reduction, khelo.run_rate, khelo.offline_tests]
+  combined.exp.0.1.0:
+    skills: [python, aws, rag, llm_engineering, ownership]
+    claims: [pqbot.loc, pqbot.pipeline_stages]
+  combined.exp.0.1.1:
+    skills: [rest_api, postgres, performance_tuning, sql, security_practice, testing]
+    claims: [pqbot.endpoints, pqbot.connection_pool, pqbot.tests, pqbot.sast_clean]
+  combined.exp.0.2.0:
+    # Autoscaling and the scheme budget belong to the next bullet, not this one.
+    skills: [aws, system_design, ci_cd, docker, postgres, security_practice]
+    claims: []
+  combined.exp.0.2.1:
+    skills: [nextjs, typescript, orm, react, node_backend, security_practice]
+    claims: [myas.prisma_models, myas.rbac_roles, myas.scheme_budget]
+  combined.exp.0.3.0:
+    skills: [stakeholder_communication, system_design]
+    claims: [pmis.scope_document, pmis.use_case_consolidation]
+  combined.exp.0.4.0:
+    skills: [python, data_pipeline, testing, system_design]
+    claims: [scout.adrs]
+  combined.exp.1.0.0:
+    skills: [docker, ci_cd, aws, nginx, node_backend, postgres, redis]
+    claims: [allatone.deploy_time]
+
+  # -------------------------------------------------------------------- consulting
+  consulting.exp.0.0.0:
+    skills: [stakeholder_communication, system_design, data_analysis]
+    claims: [pmis.scope_document, pmis.use_case_consolidation]
+  consulting.exp.0.0.1:
+    skills: [stakeholder_communication, system_design]
+    claims: []
+  consulting.exp.0.0.2:
+    # The benchmarking set and the targets are both rejected claims.
+    skills: [data_analysis, stakeholder_communication, forecasting]
+    claims: []
+  consulting.exp.0.1.0:
+    skills: [python, aws, rag, ownership]
+    claims: [pqbot.loc, pqbot.corpus]
+  consulting.exp.0.1.1:
+    skills: [testing, security_practice, agile, stakeholder_communication]
+    claims: [pqbot.tests, pqbot.sast_clean]
+  consulting.exp.0.2.0:
+    skills: [rag, llm_engineering, llm_evaluation, performance_tuning]
+    claims:
+      - khelo.languages
+      - khelo.cost_reduction
+      - khelo.run_rate
+      - khelo.cost_per_query
+      - khelo.answer_correctness
+      - khelo.eval_bank
+  consulting.exp.0.3.0:
+    skills: [python, data_pipeline, system_design, stakeholder_communication]
+    claims: [scout.adrs]
+  consulting.exp.0.4.0:
+    skills: [aws, system_design, ownership]
+    claims: [myas.scheme_budget]

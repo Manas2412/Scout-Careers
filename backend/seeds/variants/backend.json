@@ -1,0 +1,181 @@
+{
+  "key": "backend",
+  "name": "Backend Engineer",
+  "target": "Backend and distributed-systems roles with no AI framing required.",
+  "source_path": "/sessions/jolly-relaxed-goldberg/mnt/outputs/resume/Manas_Sisodia_Backend.docx",
+  "content": {
+    "header": {
+      "name": "MANAS SISODIA",
+      "contact": "LinkedIn  |  9810904048  |  manassisodia3@gmail.com  |  GitHub"
+    },
+    "summary": "Backend engineer who takes production systems from schema to deployment — async Python services, queue-backed workers, Postgres at scale and dual-cloud infrastructure. Owns the architecture, HLD/LLD and deployment design for five platforms now running in government production, including a citizen-facing service on kheloindia.gov.in and a ~60,000-LOC platform built solo. Engineers for correctness under load: connection pooling, idempotency, transaction lifetimes and test-gated releases. National-level athlete and 7x hackathon placer.",
+    "skills": [
+      {
+        "label": "Languages",
+        "items": [
+          "Python",
+          "TypeScript",
+          "JavaScript",
+          "SQL",
+          "C++"
+        ]
+      },
+      {
+        "label": "Backend",
+        "items": [
+          "FastAPI",
+          "SQLAlchemy 2.0 (async)",
+          "Pydantic v2",
+          "Alembic",
+          "Node.js",
+          "Express",
+          "Next.js 14",
+          "Prisma",
+          "REST",
+          "SSE",
+          "WebSockets",
+          "BullMQ",
+          "Redis Streams",
+          "Azure Service Bus"
+        ]
+      },
+      {
+        "label": "Data & Caching",
+        "items": [
+          "PostgreSQL (indexing, pg_trgm, pgvector, generated tsvector)",
+          "Redis (OSS cluster, RediSearch, pub/sub, read-through caching)",
+          "MongoDB",
+          "sqlglot-validated dynamic SQL"
+        ]
+      },
+      {
+        "label": "Cloud & DevOps",
+        "items": [
+          "AWS (ECS Fargate, RDS, ECR, ALB + WAF, S3, Secrets Manager, EventBridge, IAM / OIDC)",
+          "Azure (App Service, Postgres Flexible, Managed Redis, ACR)",
+          "Docker",
+          "GitHub Actions",
+          "Jenkins",
+          "Nginx",
+          "Linux"
+        ]
+      }
+    ],
+    "experience": [
+      {
+        "role": "Project Analyst",
+        "employer": "EY  (deployed to National e-Governance Division, MeitY)",
+        "location": "New Delhi",
+        "dates": "May 2026 – Present",
+        "context": "Backend and platform engineering for Government of India digital services — Ministry of Youth Affairs & Sports, Sports Authority of India, and Ministry of Corporate Affairs.",
+        "blocks": [
+          {
+            "title": "Khelo India Knowledge Assistant — live in production on kheloindia.gov.in",
+            "bullets": [
+              {
+                "id": "backend.exp.0.0.0",
+                "text": "Built the async FastAPI service and background worker behind a citizen-facing platform: Service Bus job queue, Redis pub/sub token relay and SSE streaming, plus two-layer caching, idempotency keys and 14 runtime feature flags including an instant kill switch needing no redeploy."
+              },
+              {
+                "id": "backend.exp.0.0.1",
+                "text": "Ran Redis in OSS cluster mode with a hash-tagged keyspace for same-slot multi-key reads; modelled capacity at 10,000 daily users / 20,000 chats per hour and cut run-rate ~60% (₹9.4L → ₹3.5L per month) by re-architecting the stack. 532 offline tests."
+              }
+            ]
+          },
+          {
+            "title": "PQ-Bot — document intelligence platform · MYAS / Sports Authority of India",
+            "bullets": [
+              {
+                "id": "backend.exp.0.1.0",
+                "text": "Sole engineer on a ~60,000-LOC Python service — 95 REST endpoints, 34 Postgres tables, 33 Alembic migrations, 144 config settings — piloted during the 2026 Parliament monsoon session."
+              },
+              {
+                "id": "backend.exp.0.1.1",
+                "text": "Tuned the concurrency model for high fan-out — raised anyio worker limits, a shared fan-out executor, a 50-connection upstream pool and explicit transaction release before long blocking calls so idle-in-transaction timeouts cannot kill connections."
+              },
+              {
+                "id": "backend.exp.0.1.2",
+                "text": "Hardened LLM-authored dynamic SQL with sqlglot AST validation (single-statement, SELECT-only, prefixed tables) under statement timeouts, row caps and read-only transactions; 312 tests green, SAST at zero critical findings."
+              }
+            ]
+          },
+          {
+            "title": "MYAS Task Tracker & Khelo India Expenditure Tracker — internal platforms, in production",
+            "bullets": [
+              {
+                "id": "backend.exp.0.2.0",
+                "text": "Authored the architecture, HLD/LLD and deployment design, then re-platformed from EC2 + PM2 onto ECS Fargate (ARM64) + RDS Postgres 16 + ALB/WAF — private subnets with NAT egress, autoscaling 1–6 tasks at 60% target CPU and Secrets Manager injection."
+              },
+              {
+                "id": "backend.exp.0.2.1",
+                "text": "Built a GitHub OIDC CI/CD pipeline with no stored AWS keys: typecheck / lint / audit gate, Buildx ARM64 image with layer cache, and migrations run as a one-off in-VPC Fargate task that aborts the deploy on non-zero exit. Expenditure platform tracks ₹924 Cr across 14 regional centres."
+              }
+            ]
+          },
+          {
+            "title": "Scout — internal bid discovery platform · EY",
+            "bullets": [
+              {
+                "id": "backend.exp.0.3.0",
+                "text": "Built a Python crawler and classification service over public procurement portals (GeM, CPPP) — Playwright ingestion, a five-parameter weighted scoring model, 190 tests, 31 ADRs."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "role": "Full Stack Developer Intern",
+        "employer": "Allatone Solutions Pvt. Ltd.",
+        "location": "Noida",
+        "dates": "Feb 2025 – Jun 2025",
+        "context": "Oracle Cloud Partner — 20+ enterprise clients including Aditya Birla Group, Adani, and Acko.",
+        "blocks": [
+          {
+            "title": "",
+            "bullets": [
+              {
+                "id": "backend.exp.1.0.0",
+                "text": "Architected a Docker + GitHub Actions CI/CD pipeline on AWS EC2 + Nginx, cutting deploy time 80% (15 min to under 3); built a real-time inventory backend (Node.js, PostgreSQL, Redis) automating 3 reconciliation workflows and eliminating ~4 hrs/day of ops overhead."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "projects": [
+      {
+        "title": "8Byte — Real-Time Portfolio & Stock Tracking Platform   Node.js · Redis Streams · WebSockets · PostgreSQL · AWS",
+        "bullets": [
+          {
+            "id": "backend.proj.0.0",
+            "text": "Scaled an event-driven market data pipeline to 300+ events/sec across three upstream sources via Redis Streams workers with multi-source fallback and rate-limited batching — zero event loss under peak load."
+          },
+          {
+            "id": "backend.proj.0.1",
+            "text": "Cut external API calls ~60% with read-through Redis caching; sub-300ms WebSocket latency across decoupled API / worker / WS layers scaled independently."
+          }
+        ]
+      },
+      {
+        "title": "BetterStack — Distributed Uptime Monitor   Node.js · BullMQ · Redis · PostgreSQL",
+        "bullets": [
+          {
+            "id": "backend.proj.1.0",
+            "text": "Monitored 100+ endpoints at ~500 jobs/min across 20+ concurrent BullMQ workers at <200ms check latency; exponential-backoff retries removed single-attempt timeout false positives."
+          }
+        ]
+      }
+    ],
+    "education": [
+      {
+        "qualification": "B.Tech — Electronics and Communication Engineering  ·  GGSIPU, Delhi",
+        "dates": "2021 – 2025"
+      }
+    ],
+    "achievements": [
+      "7x hackathon placer — incl. 1st Place, UHI Hackathon (Spectrum Slam) (1st of 200+ teams) and 2nd Place, BVP-HEX Hackathon.",
+      "Codeforces Rating 1615 — top ~15% globally across rated competitive programming rounds."
+    ]
+  },
+  "skill_set": []
+}

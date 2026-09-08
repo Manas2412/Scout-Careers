@@ -8,7 +8,7 @@ creates them and by the models that reference them.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Literal
+from typing import Final, Literal
 
 
 class AtsType(StrEnum):
@@ -65,15 +65,70 @@ class RequirementKind(StrEnum):
 
     The distinction that matters is HARD vs the rest: a missing hard
     requirement is a reason not to apply, a missing nice-to-have is a sentence
-    in a cover letter. RESPONSIBILITY and TOOL are extracted but carry no
-    coverage weight — they describe the job rather than gate the candidate,
-    and scoring them would dilute the number the operator reads.
+    in a cover letter. RESPONSIBILITY and CONDITION are extracted but carry no
+    coverage weight — they describe the job rather than gate the candidate, and
+    scoring them would dilute the number the operator reads.
+
+    TOOL is scored, pooled into the nice bucket, per MATCH_SCORING.md §4.4. It
+    was briefly unscored here on the same reasoning as RESPONSIBILITY, and that
+    was wrong: "Jira", "Figma", "Databricks" are named because someone screens
+    on them, and a tool the operator does not have is exactly the kind of small,
+    nameable gap the gap list exists to surface. A responsibility ("own the
+    roadmap for X") describes the job; a tool is still a demand on the
+    candidate, just a cheap one to close.
+
+    CONDITION was added after the first real extractions. Lines like "required
+    location in European time zones", "4 10-hour shifts covering weekends" and
+    "full-time position" were arriving as HARD, at weight 1.00 — in one posting,
+    four of nine. Every one would have scored as an unmet gap, so a posting's
+    rank would have partly measured how many scheduling sentences its employer
+    chose to write. They are facts about the job's shape, not demands on a
+    candidate, and the enum had nowhere to say so.
+
+    Kept rather than dropped: "weekend shifts, Europe only" is exactly what the
+    operator wants to see before applying. It just must not be scored.
     """
 
     HARD = "hard"
     NICE = "nice"
     RESPONSIBILITY = "responsibility"
     TOOL = "tool"
+    CONDITION = "condition"
+
+
+#: The ``hard`` bucket — ``H`` in the composite. One kind, but named, because
+#: the whole formula turns on this bucket being separable from the other.
+HARD_REQUIREMENT_KINDS: Final[frozenset[RequirementKind]] = frozenset({RequirementKind.HARD})
+
+#: The ``nice`` bucket — ``N``. TOOL is pooled in here (MATCH_SCORING.md §4.4)
+#: rather than given a bucket of its own: a third term would need a third weight
+#: in the blend, and there is no evidence about what that weight should be.
+NICE_REQUIREMENT_KINDS: Final[frozenset[RequirementKind]] = frozenset(
+    {RequirementKind.NICE, RequirementKind.TOOL}
+)
+
+#: The kinds coverage scoring weighs. RESPONSIBILITY and CONDITION are excluded:
+#: they describe the job rather than gate the candidate, and a scorer that
+#: counted them would rank a verbose posting below a terse one for saying more
+#: about itself.
+SCORED_REQUIREMENT_KINDS: Final[frozenset[RequirementKind]] = (
+    HARD_REQUIREMENT_KINDS | NICE_REQUIREMENT_KINDS
+)
+
+
+class ClaimConfidentiality(StrEnum):
+    """``claim_confidentiality``. Who a claim may be shown to.
+
+    RESTRICTED gates emission: such a claim never reaches a document sent
+    outside a named allow-list of employers. That is how an internal cost figure
+    stays controllable per application rather than per resume file — the
+    alternative is maintaining two versions of the same bullet and eventually
+    sending the wrong one.
+    """
+
+    PUBLIC = "public"
+    INTERNAL = "internal"
+    RESTRICTED = "restricted"
 
 
 class CoverageLevel(StrEnum):
@@ -143,8 +198,12 @@ Seniority = Literal[
 
 __all__ = [
     "COUNTS_AS_SEEN_STATUSES",
+    "HARD_REQUIREMENT_KINDS",
+    "NICE_REQUIREMENT_KINDS",
     "NON_FAULT_STATUSES",
+    "SCORED_REQUIREMENT_KINDS",
     "AtsType",
+    "ClaimConfidentiality",
     "CompanyStatus",
     "CompanyTier",
     "CoverageLevel",

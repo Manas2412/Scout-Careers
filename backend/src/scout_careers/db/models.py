@@ -4,11 +4,17 @@ Phase 1: ``company`` (§3.1), ``source`` (§3.2), ``job_posting`` (§4.1),
 ``run_log`` (§9.1). Phase 2's extraction-and-scoring slice adds
 ``resume_variant`` (§5.1), ``requirement`` (§4.2) and ``match_score`` (§6.1).
 
-Absent on purpose, though fully specified in DATA_MODEL.md: ``claim``,
-``claim_usage``, ``review_item``, ``application``, ``application_event``,
-``artifact`` and ``email_message``. ROADMAP.md §3.2 defers the ledger, document
-generation and the review queue out of Phase 2, and a model with no code behind
-it is an invitation to write against a table that does not exist yet.
+``claim`` and ``claim_usage`` (§5.2, §5.3) arrive with scoring rather than with
+document generation, because MATCH_SCORING.md §4.2 makes the ledger load-bearing
+before a document exists: a *quantified* bullet citing no claim cannot prove a
+requirement. Almost every bullet in these resumes carries a number, so without
+the ledger that rule collapses every score.
+
+Absent on purpose, though fully specified in DATA_MODEL.md: ``review_item``,
+``application``, ``application_event``, ``artifact`` and ``email_message``.
+ROADMAP.md §3.2 defers document generation and the review queue out of Phase 2,
+and a model with no code behind it is an invitation to write against a table
+that does not exist yet.
 """
 
 from __future__ import annotations
@@ -37,6 +43,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from scout_careers.common.types import (
     AtsType,
+    ClaimConfidentiality,
     CompanyStatus,
     CompanyTier,
     CoverageLevel,
@@ -48,7 +55,13 @@ from scout_careers.db.base import Base, TimestampMixin
 
 def _pg_enum(
     enum_cls: type[
-        AtsType | CompanyTier | CompanyStatus | RunStatus | RequirementKind | CoverageLevel
+        AtsType
+        | CompanyTier
+        | CompanyStatus
+        | RunStatus
+        | RequirementKind
+        | CoverageLevel
+        | ClaimConfidentiality
     ],
     name: str,
 ) -> Enum:
@@ -331,6 +344,11 @@ class Requirement(Base):
     # documented name.
     text_: Mapped[str] = mapped_column("text", Text, nullable=False)
     normalised_skill: Mapped[str | None] = mapped_column(Text)
+    # The model's advisory answer, kept so `normalised_skill` can be recomputed
+    # against a new vocabulary without a model call. Not authoritative: it is
+    # resolved through the same index as everything else, so it can never mint a
+    # token (`extract/vocabulary.py`).
+    normalised_skill_hint: Mapped[str | None] = mapped_column(Text)
     weight: Mapped[Decimal] = mapped_column(
         Numeric(3, 2), nullable=False, server_default=text("1.00")
     )
@@ -348,6 +366,90 @@ class Requirement(Base):
     __table_args__ = (
         Index("requirement_posting_idx", "posting_id", "kind"),
         Index("requirement_skill_idx", "normalised_skill"),
+    )
+
+
+class Claim(Base):
+    """One verified assertion. DATA_MODEL.md §5.2.
+
+    The single most important table in the system: nothing may be asserted in a
+    generated document unless it resolves here. Scoring depends on it before any
+    document exists — MATCH_SCORING.md §4.2 refuses to let a *quantified* bullet
+    prove a requirement unless it cites claims, which is what makes letting the
+    ledger rot lower the operator's own scores.
+    """
+
+    __tablename__ = "claim"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    # Human-written and stable, because a bullet's `claim_ids` are edited by
+    # hand in the seed file and a list of surrogate integers is unreadable there.
+    key: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    statement: Mapped[str] = mapped_column(Text, nullable=False)
+    # Text, not numeric: "~60,000" and "3x" are real claims, and coercing them
+    # either loses the qualifier or refuses the row.
+    metric_value: Mapped[str | None] = mapped_column(Text)
+    metric_unit: Mapped[str | None] = mapped_column(Text)
+    project: Mapped[str] = mapped_column(Text, nullable=False)
+    # NOT NULL on purpose. A claim nobody can trace back is exactly what this
+    # table exists to refuse.
+    evidence_ref: Mapped[str] = mapped_column(Text, nullable=False)
+    confidentiality: Mapped[ClaimConfidentiality] = mapped_column(
+        _pg_enum(ClaimConfidentiality, "claim_confidentiality"),
+        nullable=False,
+        server_default=text("'internal'"),
+    )
+    tags: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=text("'{}'")
+    )
+    verified_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    # Facts decay. A test count or a corpus size is true on a date and drifts.
+    expires_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    usages: Mapped[list[ClaimUsage]] = relationship(
+        back_populates="claim", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+    __table_args__ = (
+        Index("claim_tags_idx", "tags", postgresql_using="gin"),
+        Index("claim_project_idx", "project", postgresql_where=text("deleted_at IS NULL")),
+    )
+
+
+class ClaimUsage(Base):
+    """Where a claim was used. DATA_MODEL.md §5.3.
+
+    The provenance trail: given any generated document, every number in it can
+    be walked back to the ledger row that authorised it.
+    """
+
+    __tablename__ = "claim_usage"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    claim_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("claim.id", ondelete="CASCADE"), nullable=False
+    )
+    # No ForeignKey yet: `artifact` arrives with document generation in Phase 3.
+    # The same deliberate deferral `company.default_variant_id` used in 0001.
+    artifact_id: Mapped[str] = mapped_column(CHAR(26), nullable=False)
+    location: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    claim: Mapped[Claim] = relationship(back_populates="usages")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "claim_id", "artifact_id", "location", name="claim_usage_unique_placement"
+        ),
     )
 
 

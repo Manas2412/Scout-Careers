@@ -192,14 +192,21 @@ async def test_redirect_to_a_permitted_host_is_followed(settings) -> None:
 #: genuinely new host deny-list still trips the scan below and has to be argued
 #: for rather than quietly absorbed by a looser pattern.
 #:
-#: Invariant 4 is about *which hosts may be fetched*. These two are about which
-#: job postings are worth a model call — a preference the operator is supposed
-#: to tune, on a list whose worst outcome is a role they have to find manually.
-#: Nothing here can widen what the crawler is allowed to touch.
+#: Invariant 4 is about *which hosts may be fetched*. These three are about
+#: which job postings are worth a model call — a preference the operator is
+#: supposed to tune, on a list whose worst outcome is a role they have to find
+#: manually. Nothing here can widen what the crawler is allowed to touch.
+#:
+#: `filter_role_marker_deny` holds go-to-market and developer-relations
+#: vocabulary matched against a posting's description. Like the other two it can
+#: only ever *remove* a posting from consideration, and stage ① has already
+#: fetched the posting by the time stage ④ reads it — so no value here can cause
+#: a request, let alone one to a host the code constant forbids.
 DENY_NAMED_BUT_NOT_HOSTS: frozenset[str] = frozenset(
     {
         "filter_seniority_deny",
         "filter_keyword_deny",
+        "filter_role_marker_deny",
     }
 )
 

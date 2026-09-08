@@ -146,7 +146,12 @@ class LLMClient(Protocol):
         """Single request, schema-validated response. The only method services call."""
         ...
 
-    async def stream_text(
+    # Not `async def`. An async-generator function is annotated with a plain
+    # `def` returning `AsyncIterator`, and callers write
+    # `async for chunk in client.stream_text(...)`. Declaring it `async` means
+    # "await it, then iterate what it returns" — a different contract, and one
+    # that makes any implementation's body unreachable after a `raise`.
+    def stream_text(
         self,
         *,
         model: str,
@@ -401,19 +406,48 @@ appear before benefits boilerplate.
 ```python
 class ExtractedRequirement(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    kind: Literal["hard", "nice", "responsibility", "tool"]
-    text: Annotated[str, Field(min_length=4, max_length=280)]
+    kind: Literal["hard", "nice", "responsibility", "tool", "condition"]
+    text: Annotated[str, Field(min_length=2, max_length=280)]
     normalised_skill_hint: str | None = None    # advisory; code decides
     weight: Annotated[float, Field(ge=0.25, le=1.0)] = 1.0
-    ordinal: Annotated[int, Field(ge=0)]
+    ordinal: Annotated[int, Field(ge=0)] = 0    # accepted, then ignored
 
 class ExtractionResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    requirements: Annotated[list[ExtractedRequirement], Field(min_length=1, max_length=40)]
+    requirements: Annotated[list[ExtractedRequirement], Field(max_length=40)] = []
     seniority_guess: Literal["intern","junior","mid","senior","staff","lead","director","unknown"]
     employment_type_guess: str | None = None
     notes: Annotated[str, Field(max_length=280)] = ""
 ```
+
+Three of those bounds were loosened when the schema was implemented
+(`extract/schema.py`), each because the original would have made a schema
+violation out of an ordinary posting:
+
+- **`text` floors at 2, not 4.** A "Skills:" list containing `Go` or `C` is
+  ordinary. Under a 4-character floor that one item fails the whole object,
+  costing the repair retry — a second full-JD call — and then the other twenty
+  requirements with it. Two still rejects the junk (`-`, `*`) the bound was for.
+- **`requirements` may be empty.** A floor of one tells a model looking at a
+  benefits page that it must produce a requirement, and the cheapest way to obey
+  is to invent one. An empty extraction is a fact about the posting; a
+  fabricated requirement is a fact about nothing, and it would go on to be
+  scored as though it were real.
+- **`ordinal` is accepted and discarded.** The service renumbers by list
+  position. Asking a model to number its output improves its ordering
+  discipline, but a duplicated or skipped number is not worth a repair retry
+  when the position in the list already carries the answer.
+
+**The controlled vocabulary is not sent in the prompt**, despite being listed
+above among the trusted inputs. The hint is resolved through the same 342-entry
+alias index as everything else, so a model answering `"c++"` reaches `cpp`
+without the list in front of it. The reason for leaving it out is not the ~400
+tokens per call: a closed list in a prompt reads as an instruction to *choose
+from it*, and the cheapest way to obey is to map an unlisted skill onto the
+nearest listed one — turning an honest `None`, which scoring counts as unmatched
+and therefore understates, into a confident wrong token that overstates. If
+measurement shows hints missing often, the list belongs in the **system** block,
+where prompt caching pays for it once per burst.
 
 `normalised_skill_hint` is advisory. `extract/vocabulary.py` makes the final
 assignment to `requirement.normalised_skill` by deterministic lookup, using the
@@ -434,6 +468,20 @@ Temperature 0 because extraction should be reproducible: the same JD must yield
 the same requirements, or `match_score` rows are not comparable across runs and
 the `UNIQUE (posting_id, variant_id, prompt_version)` constraint is protecting
 nothing.
+
+**That control is not available on every model.** Newer Anthropic models
+deprecate `temperature` and Bedrock rejects the whole request when it is
+present — not silently ignoring the field, but failing with
+`ValidationException: temperature is deprecated for this model`. Where that is
+so, `LLM_TEMPERATURE_SUPPORTED_FAST` / `_STRONG` is set false and the client
+omits the field; the model's own sampling default then applies, and the
+reproducibility argued for above is a property this system no longer controls.
+
+The consequence is real and belongs with the eval harness rather than buried
+here: a run-to-run difference in extracted requirements is no longer evidence
+that a prompt changed. An A/B between two prompt versions on such a model has to
+measure its own baseline noise first — the same prompt against the same postings
+twice — before any difference between versions means anything.
 
 ### 5.3 Family 2 — coverage judgement
 

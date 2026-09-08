@@ -60,6 +60,11 @@ SUPERSEDED_PREFIX: Final = "superseded_by:"
 #: it separates those two populations rather than at a round number.
 MIN_DESCRIPTION_CHARS: Final = 400
 
+#: How many matched role markers the rejection reason names before it summarises
+#: the rest. `filter_reason` is a column the operator reads in a table, so it has
+#: to stay one readable line; the count carries what the names cannot.
+_REASON_MARKERS: Final = 4
+
 
 @dataclass(frozen=True, slots=True)
 class FilterVerdict:
@@ -341,6 +346,85 @@ def _deny_entries_by_specificity(entries: Sequence[str]) -> list[str]:
     return sorted(cleaned, key=lambda entry: (-len(entry), entry))
 
 
+def role_marker_hits(description: str, settings: Settings) -> tuple[str, ...]:
+    """Every distinct go-to-market marker a description contains.
+
+    Args:
+        description: The posting body.
+        settings: Supplies ``FILTER_ROLE_MARKER_DENY``.
+
+    Returns:
+        The matched markers, sorted, without duplicates.
+
+    Public because the threshold is the thing that needs tuning, and tuning it
+    blind is how a filter overshoots: raising it leaks go-to-market adverts into
+    the extraction spend, lowering it silently removes a forward-deployed
+    engineering role the operator said they would apply for. ``filter markers``
+    reads this to show the hit distribution over the live corpus, so the choice
+    is made against counts rather than against intuition.
+
+    One definition, two callers. A diagnostic that computed hits its own way
+    would eventually disagree with the predicate, and the disagreement would
+    show up as a filter that behaves differently from the tool used to tune it.
+    """
+    body = description.lower()
+    return tuple(
+        sorted(
+            {
+                marker
+                for marker in _deny_entries_by_specificity(settings.filter_role_marker_deny)
+                if re.search(rf"\b{re.escape(marker)}\b", body)
+            }
+        )
+    )
+
+
+def _role_domain_allowed(
+    posting: PostingView, company: CompanyView, settings: Settings
+) -> FilterVerdict:
+    """Drop go-to-market and developer-relations roles by what the body says.
+
+    The title deny-list structurally cannot reach these. "Deployment
+    Strategist", "Developer Advocate" and "Engineering — Internal AI
+    Transformation" contain no denied word, and the 100-posting sample had them
+    surviving alongside genuine engineering roles: of 989 scored requirements
+    only 182 resolved to a skill token, and most of the shortfall was GTM
+    vocabulary the vocabulary is not meant to contain.
+
+    **Distinct markers, not occurrences, and a threshold above one.** Every
+    term here is one that a role where you write code does not use, but any
+    single one can appear by accident — an engineering JD mentions a "customer"
+    or a "deal" now and then. Requiring several independent markers is what
+    separates an advert about selling from an advert that mentions selling.
+
+    **This is deliberately not "does it mention sales".** ``CONFIGURATION.md``
+    already records why ``strategist`` and ``solutions architect`` are absent
+    from the title deny-list: each cost a role worth seeing, including a
+    Forward Deployed Strategist, and the operator named forward-deployed
+    engineering as something they would apply for. Those roles ask for Python
+    and API integration; an account executive asks for Salesforce and a quota.
+    The markers below are the second kind, chosen so the first kind survives.
+
+    Set ``FILTER_ROLE_MARKER_MIN=0`` to switch the predicate off.
+    """
+    del company
+    threshold = settings.filter_role_marker_min
+    if threshold <= 0:
+        return PASS
+    hits = role_marker_hits(posting.description_text, settings)
+    if len(hits) >= threshold:
+        # The reason names the markers, so a rejection can be argued with, and
+        # says how many matched when it cannot name them all. Seven markers and
+        # exactly three read identically otherwise — and that is the difference
+        # between an advert that is obviously go-to-market and one sitting on
+        # the threshold, which is the judgement the operator makes when tuning
+        # `FILTER_ROLE_MARKER_MIN`.
+        shown = "+".join(hits[:_REASON_MARKERS])
+        overflow = len(hits) - _REASON_MARKERS
+        return _fail(f"role_domain:{shown}" + (f"+{overflow} more" if overflow > 0 else ""))
+    return PASS
+
+
 def _experience_within_reach(
     posting: PostingView, company: CompanyView, settings: Settings
 ) -> FilterVerdict:
@@ -386,7 +470,11 @@ CHAIN: Final[tuple[tuple[str, Predicate], ...]] = (
     ("seniority", _seniority_allowed),
     ("location", _location_matches),
     ("title_denylist", _title_not_denied),
-    # Last: the only predicate that scans the whole description.
+    # The last two scan the whole description. Domain before experience because
+    # a GTM advert's "3+ years of experience working with customers" is within
+    # the ceiling and would otherwise pass — and then the reason column would
+    # say nothing about why the role was wrong.
+    ("role_domain", _role_domain_allowed),
     ("experience", _experience_within_reach),
 )
 
@@ -419,4 +507,5 @@ __all__ = [
     "Predicate",
     "evaluate",
     "parse_experience_years",
+    "role_marker_hits",
 ]

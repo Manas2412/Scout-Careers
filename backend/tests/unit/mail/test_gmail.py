@@ -356,3 +356,30 @@ async def test_close_mail_reader_closes_a_gmail_client_and_tolerates_none() -> N
 
     # A reader with no aclose is not an error: the protocol does not require one.
     await close_mail_reader(BareReader())  # type: ignore[arg-type]
+
+
+def test_an_empty_label_omits_the_label_term() -> None:
+    """A mailbox used only for alerts needs no label.
+
+    It is also what `scripts/mail-probe.sh` uses to tell "the label is missing"
+    apart from "no alert arrived" — two failures that look identical in a run
+    summary and have completely different fixes. Before this, an empty label
+    produced `label:""`, which matches nothing and made the diagnostic lie.
+
+    The sender allow-list still bounds what is read; the label was never the
+    only boundary.
+    """
+    query = build_query(
+        label="", senders=["jobalerts-noreply@linkedin.com"], since=datetime(2026, 9, 5, tzinfo=UTC)
+    )
+    assert "label:" not in query
+    assert "from:(jobalerts-noreply@linkedin.com)" in query
+
+
+def test_a_configured_label_is_still_required_in_the_query() -> None:
+    query = build_query(
+        label="job-alerts",
+        senders=["jobalerts-noreply@linkedin.com"],
+        since=datetime(2026, 9, 5, tzinfo=UTC),
+    )
+    assert query.startswith('label:"job-alerts"')

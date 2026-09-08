@@ -1,7 +1,7 @@
 """The ``scout-careers`` entry point.
 
-One Typer app, eight groups: ``db``, ``company``, ``source``, ``seed``, ``run``,
-``runs``, ``scheduler`` and ``auth``. Nothing here holds logic — each group's
+One Typer app, ten groups: ``db``, ``company``, ``source``, ``seed``, ``run``,
+``runs``, ``scheduler``, ``auth``, ``extract`` and ``filter``. Nothing here holds logic — each group's
 module does — so that adding a command never means editing the place the entry
 point is declared.
 """
@@ -17,8 +17,11 @@ from alembic.config import Config as AlembicConfig
 
 from scout_careers.cli import auth as auth_cli
 from scout_careers.cli import company as company_cli
+from scout_careers.cli import extract as extract_cli
+from scout_careers.cli import filters as filters_cli
 from scout_careers.cli import runs as runs_cli
 from scout_careers.cli import scheduler as scheduler_cli
+from scout_careers.cli import score as score_cli
 from scout_careers.cli import seed as seed_cli
 from scout_careers.cli import source as source_cli
 from scout_careers.cli.output import echo, error
@@ -43,7 +46,10 @@ app.add_typer(seed_cli.app, name="seed")
 app.add_typer(runs_cli.run_app, name="run")
 app.add_typer(runs_cli.runs_app, name="runs")
 app.add_typer(scheduler_cli.app, name="scheduler")
+app.add_typer(score_cli.app, name="score")
 app.add_typer(auth_cli.app, name="auth")
+app.add_typer(extract_cli.app, name="extract")
+app.add_typer(filters_cli.app, name="filter")
 
 
 def alembic_config(config_path: Path | None = None) -> AlembicConfig:

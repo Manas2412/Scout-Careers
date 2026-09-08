@@ -1,0 +1,462 @@
+# The controlled skill vocabulary.
+#
+# `requirement.normalised_skill` and `resume_variant.skill_set` both hold tokens
+# from this file, which is what makes coverage a set operation rather than a
+# language problem.
+#
+# A model may not add to it. That is the whole point of it being controlled: a
+# phrase the resolver cannot place becomes a `skill_proposal` for the operator to
+# review, and new tokens arrive through a reviewed commit. "Why did `Strong
+# C/C++ skills` become `cpp`?" then has a one-line answer that points at a file.
+#
+# Versioned. `version` below is concatenated into `requirement.prompt_version`,
+# so changing this file invalidates and re-triggers extraction exactly like a
+# prompt change — otherwise a re-mapped phrase silently re-ranks every posting.
+#
+# Scope: this is a starting vocabulary, not a complete one. It covers what the
+# live corpus and this operator's profile actually contain. It grows through
+# proposals rather than by guessing at breadth up front — an alias nobody ever
+# hits is indistinguishable from one that is wrong.
+
+version: vocab.2026-09-07.2
+
+skills:
+  # --- languages -----------------------------------------------------------
+  - token: python
+    label: Python
+    family: language
+    aliases: ["python", "python3", "python 3", "cpython", "strong python skills"]
+
+  - token: java
+    label: Java
+    family: language
+    aliases: ["java", "core java", "java 8", "java 11", "java 17", "jvm"]
+
+  - token: typescript
+    label: TypeScript
+    family: language
+    aliases: ["typescript", "ts", "typescript/javascript"]
+
+  - token: javascript
+    label: JavaScript
+    family: language
+    aliases: ["javascript", "js", "es6", "ecmascript", "node.js", "nodejs", "node"]
+
+  - token: go
+    label: Go
+    family: language
+    aliases: ["go", "golang", "go lang"]
+
+  - token: cpp
+    label: C++
+    family: language
+    aliases:
+      ["c++", "c/c++", "cpp", "c plus plus", "modern c++", "c++11", "c++17", "c++20",
+       "strong c/c++ skills", "embedded c/c++"]
+
+  - token: c_lang
+    label: C
+    family: language
+    aliases: ["c", "embedded c", "ansi c"]
+
+  - token: rust
+    label: Rust
+    family: language
+    aliases: ["rust", "rust lang", "rustlang"]
+
+  - token: sql
+    label: SQL
+    family: language
+    aliases:
+      ["sql", "ansi sql", "writing sql", "sql queries", "advanced sql", "sqlglot",
+       "sqlglot- validated dynamic sql", "sqlglot-validated text-to-sql", "text-to-sql",
+       "dynamic sql"]
+
+  # --- backend and services ------------------------------------------------
+  - token: rest_api
+    label: REST API design
+    family: backend
+    aliases:
+      ["rest", "rest api", "restful", "restful api", "rest apis", "api design", "http api",
+       "api integration strategy", "api integration", "openapi", "swagger"]
+
+  - token: fastapi
+    label: FastAPI
+    family: backend
+    aliases: ["fastapi", "fast api"]
+
+  - token: django
+    label: Django
+    family: backend
+    aliases: ["django", "django rest framework", "drf"]
+
+  - token: flask
+    label: Flask
+    family: backend
+    aliases: ["flask"]
+
+  - token: spring
+    label: Spring
+    family: backend
+    aliases: ["spring", "spring boot", "springboot", "spring framework"]
+
+  # Added in vocab.2026-09-07.2, from the intersection of what the six resume
+  # variants claim and what an ordinary backend posting asks for. Skills the
+  # operator has that nothing in the corpus demands were deliberately left out —
+  # Bhashini, DPDP, RACI, ISO 27001. A token neither side uses makes the
+  # vocabulary look complete while matching nothing, and an unmatched phrase
+  # stays visible in `seed variants` and the requirements audit either way.
+  - token: orm
+    label: ORM and schema migrations
+    family: backend
+    aliases:
+      ["orm", "sqlalchemy", "sqlalchemy 2.0", "sqlalchemy 2.0 (async)", "alembic", "prisma",
+       "alembic / prisma migrations", "django orm", "typeorm", "sequelize", "hibernate",
+       "database migrations", "schema migrations"]
+
+  - token: pydantic
+    label: Pydantic
+    family: backend
+    aliases: ["pydantic", "pydantic v2", "pydantic v1"]
+
+  # Distinct from `javascript` for the same reason `fastapi` is distinct from
+  # `python`: a posting asking for Express is asking for more than the language.
+  - token: node_backend
+    label: Node.js backend frameworks
+    family: backend
+    aliases: ["express", "express.js", "expressjs", "fastify", "nestjs", "nest.js", "koa", "hapi"]
+
+  - token: realtime_transport
+    label: Realtime transports
+    family: backend
+    aliases:
+      ["websockets", "websocket", "web sockets", "socket.io", "sse", "server-sent events",
+       "server sent events", "sse streaming", "streaming responses", "long polling"]
+
+  - token: microservices
+    label: Microservices
+    family: backend
+    aliases: ["microservices", "micro services", "microservice architecture", "service oriented"]
+
+  - token: distributed_systems
+    label: Distributed systems
+    family: backend
+    aliases:
+      ["distributed systems", "distributed computing", "large scale systems",
+       "scalable systems"]
+
+  - token: system_design
+    label: System design
+    family: backend
+    aliases:
+      ["system design", "systems design", "architecture design", "hld", "lld", "hld / lld",
+       "hld / lld authorship", "solution architecture", "architecture decision records", "adr",
+       "technical design document"]
+
+  - token: message_queue
+    label: Message queues and streaming
+    family: backend
+    aliases:
+      ["kafka", "apache kafka", "rabbitmq", "sqs", "pub/sub", "message queue", "streaming",
+       "azure service bus", "service bus", "bullmq", "redis streams", "celery", "job queue",
+       "background worker", "event-driven"]
+
+  # --- data ----------------------------------------------------------------
+  - token: postgres
+    label: PostgreSQL
+    family: database
+    aliases:
+      ["postgres", "postgresql", "psql", "pg", "pg_trgm", "rds postgres", "postgres internals"]
+
+  - token: mysql
+    label: MySQL
+    family: database
+    aliases: ["mysql", "mariadb"]
+
+  - token: mongodb
+    label: MongoDB
+    family: database
+    aliases: ["mongodb", "mongo", "document database"]
+
+  - token: redis
+    label: Redis
+    family: database
+    aliases:
+      ["redis", "valkey", "in-memory cache", "caching layer", "semantic caching",
+       "semantic and two-layer caching", "read-through caching", "redisearch"]
+
+  - token: vector_database
+    label: Vector databases
+    family: database
+    aliases:
+      ["vector database", "vector db", "pgvector", "pinecone", "weaviate", "qdrant", "faiss",
+       "chroma", "chromadb", "milvus"]
+
+  - token: data_pipeline
+    label: Data pipelines
+    family: data
+    aliases: ["etl", "elt", "data pipeline", "data pipelines", "airflow", "dbt", "data ingestion"]
+
+  - token: data_modelling
+    label: Data modelling
+    family: data
+    aliases: ["data modelling", "data modeling", "schema design", "dimensional modelling"]
+
+  # --- AI / ML -------------------------------------------------------------
+  - token: rag
+    label: Retrieval-augmented generation
+    family: ai
+    aliases:
+      ["rag", "retrieval augmented generation", "retrieval-augmented", "grounded generation",
+       "rag architecture", "rag and retrieval design", "hybrid retrieval",
+       "reciprocal rank fusion", "rrf", "hyde", "hyq", "query expansion",
+       "cross-encoder reranking", "reranking", "cohere rerank", "semantic search"]
+
+  - token: prompt_engineering
+    label: Prompt engineering
+    family: ai
+    aliases:
+      ["prompt engineering", "prompting", "prompt design", "few-shot prompting",
+       "prompt versioning", "prompt templates"]
+
+  - token: llm_evaluation
+    label: LLM evaluation
+    family: ai
+    aliases:
+      ["llm evaluation", "model evaluation", "eval harness", "evals", "offline evaluation",
+       "eval harness design", "llm-as-judge scoring", "llm as judge",
+       "hallucination guardrails", "groundedness", "golden set"]
+
+  - token: agentic_workflows
+    label: Agentic workflows
+    family: ai
+    aliases:
+      ["agents", "ai agents", "agentic", "tool use", "function calling", "multi-agent",
+       "langgraph", "langgraph multi-agent orchestration", "multi-agent orchestration",
+       "agent orchestration", "langchain"]
+
+  - token: llm_engineering
+    label: LLM application engineering
+    family: ai
+    composite_of: [rag, prompt_engineering, llm_evaluation, agentic_workflows]
+    aliases: ["llm", "llms", "large language models", "genai", "generative ai", "foundation models", "ollama", "vllm", "llama",
+       "self-hosted llm"]
+
+  - token: machine_learning
+    label: Machine learning
+    family: ai
+    aliases: ["machine learning", "ml", "supervised learning", "model training", "scikit-learn"]
+
+  - token: nlp
+    label: Natural language processing
+    family: ai
+    aliases: ["nlp", "natural language processing", "text processing", "embeddings"]
+
+  - token: pytorch
+    label: PyTorch
+    family: ai
+    aliases: ["pytorch", "torch"]
+
+  - token: tensorflow
+    label: TensorFlow
+    family: ai
+    aliases: ["tensorflow", "tf", "keras"]
+
+  # --- cloud and platform --------------------------------------------------
+  - token: aws
+    label: AWS
+    family: cloud
+    aliases:
+      ["aws", "amazon web services", "ec2", "s3", "lambda", "rds", "aws bedrock", "bedrock",
+       "ecs fargate", "fargate", "ecr", "cloudwatch"]
+
+  - token: azure
+    label: Azure
+    family: cloud
+    aliases:
+      ["azure", "microsoft azure", "azure cloud", "azure openai",
+       "azure ai document intelligence", "azure app service", "azure blob storage"]
+
+  - token: gcp
+    label: Google Cloud
+    family: cloud
+    aliases: ["gcp", "google cloud", "google cloud platform", "vertex ai", "bigquery"]
+
+  - token: docker
+    label: Docker
+    family: platform
+    aliases:
+      ["docker", "containers", "containerisation", "containerization", "oci images",
+       "docker multi- stage", "multi-stage build", "dockerfile"]
+
+  - token: kubernetes
+    label: Kubernetes
+    family: platform
+    aliases: ["kubernetes", "k8s", "eks", "gke", "aks", "container orchestration"]
+
+  - token: ci_cd
+    label: CI/CD
+    family: platform
+    aliases:
+      ["ci/cd", "cicd", "continuous integration", "continuous delivery", "github actions",
+       "jenkins", "gitlab ci", "build pipeline", "github oidc", "buildx", "trivy"]
+
+  - token: terraform
+    label: Infrastructure as code
+    family: platform
+    aliases: ["terraform", "infrastructure as code", "iac", "cloudformation", "pulumi"]
+
+  - token: observability
+    label: Observability
+    family: platform
+    aliases:
+      ["observability", "monitoring", "logging", "tracing", "prometheus", "grafana",
+       "opentelemetry", "datadog", "structured logging", "application insights"]
+
+  - token: nginx
+    label: Nginx
+    family: platform
+    aliases: ["nginx", "reverse proxy", "ingress controller"]
+
+  - token: linux
+    label: Linux
+    family: platform
+    aliases: ["linux", "unix", "bash", "shell scripting"]
+
+  - token: git
+    label: Git
+    family: platform
+    aliases: ["git", "version control", "github", "gitlab"]
+
+  # --- frontend ------------------------------------------------------------
+  - token: react
+    label: React
+    family: frontend
+    aliases: ["react", "react.js", "reactjs", "react hooks"]
+
+  - token: nextjs
+    label: Next.js
+    family: frontend
+    aliases: ["next.js", "nextjs", "next", "next.js 14", "next.js 15"]
+
+  - token: frontend_general
+    label: Frontend engineering
+    family: frontend
+    aliases: ["frontend", "front-end", "front end", "ui development", "html/css", "css"]
+
+  # --- practice ------------------------------------------------------------
+  - token: testing
+    label: Automated testing
+    family: practice
+    aliases:
+      ["testing", "unit testing", "unit tests", "integration testing", "pytest",
+       "test coverage", "automated testing", "tdd", "pytest-asyncio", "contract tests"]
+
+  - token: code_review
+    label: Code review
+    family: practice
+    aliases: ["code review", "peer review", "reviewing code", "pull requests"]
+
+  - token: agile
+    label: Agile delivery
+    family: practice
+    aliases: ["agile", "scrum", "kanban", "sprints", "sprint planning"]
+
+  - token: security_practice
+    label: Secure engineering
+    family: practice
+    aliases:
+      ["security", "application security", "appsec", "owasp", "secure coding",
+       "threat modelling", "owasp / sast remediation", "sast", "dast", "dependency scanning"]
+
+  - token: performance_tuning
+    label: Performance optimisation
+    family: practice
+    aliases:
+      ["performance", "performance tuning", "optimisation", "optimization", "latency",
+       "profiling"]
+
+  - token: stakeholder_communication
+    label: Stakeholder communication
+    family: practice
+    aliases:
+      ["stakeholder management", "stakeholder communication", "communication skills",
+       "cross-functional collaboration", "working with stakeholders", "client facing"]
+
+  - token: ownership
+    label: End-to-end ownership
+    family: practice
+    aliases:
+      ["ownership", "end to end ownership", "end-to-end", "self-starter", "autonomy",
+       "owning delivery", "drive projects"]
+
+  # --- finance and analysis ------------------------------------------------
+  # Present because this operator applied to a financial-modelling role. A
+  # vocabulary tuned only to the modal posting cannot score the interesting ones.
+  - token: excel_modelling
+    label: Financial modelling in Excel
+    family: finance_tool
+    aliases:
+      ["advanced excel", "excel modelling", "excel modeling", "financial modelling",
+       "financial modeling", "three-statement model", "excel financial models"]
+
+  - token: budgeting
+    label: Budgeting
+    family: finance
+    aliases: ["budgeting", "budget planning", "annual budget"]
+
+  - token: forecasting
+    label: Forecasting
+    family: finance
+    aliases: ["forecasting", "financial forecasting", "demand forecasting"]
+
+  - token: variance_analysis
+    label: Variance analysis
+    family: finance
+    aliases: ["variance analysis", "budget vs actual", "plan vs actual"]
+
+  - token: fpna
+    label: FP&A
+    family: finance
+    composite_of: [budgeting, forecasting, variance_analysis]
+    aliases: ["fp&a", "fpna", "financial planning and analysis", "planning and analysis"]
+
+  - token: power_bi
+    label: Power BI
+    family: bi_tool
+    aliases: ["power bi", "powerbi", "power-bi", "microsoft power bi", "power bi dashboards"]
+
+  - token: tableau
+    label: Tableau
+    family: bi_tool
+    aliases: ["tableau", "tableau dashboards"]
+
+  - token: data_analysis
+    label: Data analysis
+    family: analysis
+    aliases: ["data analysis", "analytics", "data analytics", "quantitative analysis", "pandas"]
+
+  # --- embedded ------------------------------------------------------------
+  # Present because the two roles that started this project were firmware roles.
+  # The system should be able to score them honestly rather than pretend the
+  # domain does not exist.
+  - token: rtos
+    label: Real-time operating systems
+    family: embedded
+    aliases: ["rtos", "freertos", "real-time operating system", "real time os", "zephyr", "threadx"]
+
+  - token: firmware
+    label: Firmware development
+    family: embedded
+    aliases: ["firmware", "firmware development", "embedded firmware", "bare metal"]
+
+  - token: device_drivers
+    label: Device drivers
+    family: embedded
+    aliases: ["device driver", "device drivers", "driver development", "kernel driver"]
+
+  - token: embedded_systems
+    label: Embedded systems
+    family: embedded
+    composite_of: [rtos, firmware, device_drivers]
+    aliases: ["embedded", "embedded systems", "embedded software"]

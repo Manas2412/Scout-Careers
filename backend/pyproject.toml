@@ -34,6 +34,8 @@ dependencies = [
   "google-api-python-client>=2.140",
   # Fernet, for the OAuth token at rest. There is no plaintext fallback.
   "cryptography>=43",
+  # Bedrock. Imported by llm/bedrock.py and nowhere else in the package.
+  "boto3>=1.35",
 ]
 
 [project.scripts]
@@ -49,10 +51,15 @@ dev = [
   "mypy>=1.13",
   "import-linter>=2.1",
   "types-PyYAML>=6.0",
+  "boto3-stubs[bedrock-runtime]>=1.35",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/scout_careers"]
+# Prompts are data files inside the package, not Python. Without this they are
+# absent from an installed copy and the registry loads nothing — which fails as
+# "no prompts for family ..." at 08:00 rather than at build time.
+artifacts = ["src/scout_careers/llm/prompts/**/*.md", "src/scout_careers/llm/prompts/*.lock"]
 
 # ---------------------------------------------------------------------------
 # ruff — format and lint. One tool: no black, no isort, no flake8.
@@ -102,6 +109,15 @@ allowed-confusables = ["\u2013", "\u2014", "\u2019", "\u00a0"]
 "tests/*" = ["S101", "S105", "S106", "RUF001", "RUF002", "ARG"]
 "migrations/*" = ["E402", "F401", "N999"]    # alembic's generated shape
 "migrations/versions/*" = ["INP001"]
+# T201: dev tooling run by hand at a terminal, where printing IS the output.
+# The rule earns its keep in src/, where a `print` is a log line that never
+# reaches the log — and that is enforced separately by the "no print statements"
+# invariant in `ci/run-checks.sh`, which scans src/ only. Scripts here stay
+# linted and type-checked in every other respect, which is the reason they are
+# real `.py` files rather than another shell heredoc: a heredoc is invisible to
+# both, and this one parses the operator's own resumes.
+# INP001: a script directory is not a package and must not grow an __init__.
+"scripts/*" = ["T201", "INP001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["scout_careers"]
@@ -198,3 +214,34 @@ name = "mail/ never touches the database or the scheduler"
 type = "forbidden"
 source_modules = ["scout_careers.mail"]
 forbidden_modules = ["scout_careers.db", "scout_careers.ingest", "scout_careers.scheduler"]
+
+# llm/ is a provider boundary. It may not reach the database or the pipeline:
+# a provider module that acquires a session is one that can persist things the
+# caller never asked for, and the whole point of the Protocol is that a service
+# can reason about what a model call does by reading one signature.
+[[tool.importlinter.contracts]]
+name = "llm/ never touches the database or the pipeline"
+type = "forbidden"
+source_modules = ["scout_careers.llm"]
+forbidden_modules = ["scout_careers.db", "scout_careers.ingest", "scout_careers.mail", "scout_careers.scheduler", "scout_careers.registry"]
+
+# The controlled vocabulary and the extraction wire schema are the two halves of
+# the extraction stage that make its judgements reproducible, and both have to
+# stay loadable on their own: by a test with no database, by the eval harness,
+# by an audit script that only wants to ask what a phrase resolves to. Only
+# extract/service.py — the piece that calls and writes — may reach further.
+# The scoring arithmetic is testable without a database only because it never
+# touches one. `scoring.service` is the single module allowed to, and keeping
+# that boundary is what makes MATCH_SCORING.md §9 and §10 reproducible in CI
+# rather than a spreadsheet nobody re-runs.
+[[tool.importlinter.contracts]]
+name = "the scoring arithmetic stays pure"
+type = "forbidden"
+source_modules = ["scout_careers.scoring.coverage", "scout_careers.scoring.composite", "scout_careers.scoring.gaps", "scout_careers.scoring.adjacency"]
+forbidden_modules = ["scout_careers.db", "scout_careers.llm", "scout_careers.sources", "scout_careers.ingest", "scout_careers.mail", "scout_careers.cli"]
+
+[[tool.importlinter.contracts]]
+name = "the skill vocabulary and extraction schema stay pure"
+type = "forbidden"
+source_modules = ["scout_careers.extract.vocabulary", "scout_careers.extract.schema"]
+forbidden_modules = ["scout_careers.db", "scout_careers.llm", "scout_careers.sources", "scout_careers.ingest", "scout_careers.mail"]

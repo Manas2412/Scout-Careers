@@ -129,7 +129,11 @@ def backoff_delay(attempt: int, retry_after: float | None) -> float:
     """
     if retry_after is not None:
         return min(retry_after, MAX_DELAY_S)
-    ceiling = min(MAX_DELAY_S, BASE_DELAY_S * 2**attempt)
+    # 2.0, not 2: `int ** int` with a variable exponent is `Any` to a type
+    # checker (`2 ** -1` is a float), and that Any spreads through the
+    # arithmetic. It goes unnoticed here only because `uniform` returns a real
+    # float either way — the hole is silent rather than absent.
+    ceiling = min(MAX_DELAY_S, BASE_DELAY_S * 2.0**attempt)
     return random.uniform(0.0, ceiling)  # noqa: S311 - jitter, not a secret
 
 

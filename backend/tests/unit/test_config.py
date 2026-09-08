@@ -146,17 +146,51 @@ def test_no_unbuilt_phase_keys_leaked_into_settings() -> None:
     - ``llm_`` came off when Phase 2's extraction-and-scoring slice began. The
       provider layer is being built now, so ``LLM_PROVIDER``, the pinned model
       IDs, the price table and the budget breaker are current keys.
+    - ``scoring_`` came off when ``scoring/`` landed. The previous version of
+      this docstring said it would stay "until the scoring code lands, not when
+      the work is planned, or the guard means nothing" — and this test failing
+      on the commit that added ``scoring/composite.py`` is that promise being
+      kept. Every key is now read: ``composite.py`` reads the blend, the tier
+      weights, the recency triple and the gate bands; ``coverage.py`` reads the
+      partial credit; ``service.py`` reads the prompt version.
 
-    What remains is genuinely unbuilt. ``scoring_`` stays on the list even
-    though scoring is in this slice: it comes off when the scoring code lands,
-    not when the work is planned, or the guard means nothing. ``generation_``,
-    ``ledger_`` and ``export_`` belong to Phase 3 and later — ROADMAP.md §3.2
-    explicitly defers the claims ledger, document generation and the export out
-    of Phase 2 — and ``ff_`` gates behaviour that has no code at all.
+    What remains is genuinely unbuilt. ``generation_`` and ``export_`` belong to
+    Phase 3 and later — ROADMAP.md §3.2 defers document generation and the
+    export out of Phase 2 — and ``ff_`` gates behaviour that has no code at all.
+    ``ledger_`` stays too, and deliberately: the claims ledger *table* now
+    exists and is seeded, but no ``LEDGER_`` key does, because nothing in the
+    ledger is yet configurable. A field would be configuration ahead of code
+    exactly as this test describes.
     """
-    prefixes = ("scoring_", "generation_", "ledger_", "ff_", "export_")
+    prefixes = ("generation_", "ledger_", "ff_", "export_")
     for field_name in Settings.model_fields:
         assert not field_name.startswith(prefixes), f"{field_name} has no code that reads it"
+
+
+def test_every_scoring_key_is_actually_read_by_the_scoring_code() -> None:
+    """The successor to ``scoring_`` on the unbuilt-prefix list.
+
+    That prefix guarded one thing: a key nothing reads. Deleting it when the
+    code landed would hand back the guarantee rather than keep it — the next
+    ``SCORING_SOMETHING`` added speculatively would pass every check and reach
+    ``.env.example``, where an operator would set it and watch nothing happen.
+
+    So the check moves from "does this prefix exist" to "is each key referenced
+    where it belongs". Grep rather than execution, because the alternative is
+    scoring a posting per setting to see whether the number moves — and a key
+    whose absence changes no observable output is precisely the key this is
+    looking for.
+    """
+    source = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (Path(__file__).resolve().parents[2] / "src" / "scout_careers").rglob("*.py")
+    )
+    unread = [
+        name
+        for name in Settings.model_fields
+        if name.startswith(("scoring_", "skill_adjacency_")) and f"settings.{name}" not in source
+    ]
+    assert not unread, f"{unread} are configured but nothing reads them"
 
 
 def test_no_send_side_mail_keys_exist_yet() -> None:
@@ -366,3 +400,17 @@ def test_the_exemption_list_does_not_cover_a_key_that_is_gone() -> None:
     keys = set(_example_keys())
     stale = sorted(NOT_ACTUALLY_SECRET - keys)
     assert stale == [], f"exemptions for keys not in .env.example: {stale}"
+
+
+def test_a_pinned_env_key_is_distinguishable_from_a_default() -> None:
+    """`model_fields_set` is what makes the override warning possible.
+
+    `.env` is normally seeded by copying `.env.example`, which pins every key.
+    A later change to a default in `config.py` is then inert, and the only
+    symptom is a command that reports no change and looks like it had already
+    run. That cost a full round-trip: 34 deny-list entries added, 153 postings
+    expected to move, none moved, and nothing said why.
+    """
+    pinned = make_settings(filter_role_marker_min=1)
+    assert "filter_role_marker_min" in pinned.model_fields_set
+    assert "filter_keyword_deny" not in pinned.model_fields_set

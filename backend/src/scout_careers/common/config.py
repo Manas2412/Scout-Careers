@@ -155,6 +155,65 @@ class Settings(BaseSettings):
             "counsel",
             "customer success",
             "technical support",
+            # --- added after simulating 37 candidates with `filter try-titles`
+            # against the 1,178 surviving postings that contain no go-to-market
+            # marker. Each removes a whole function rather than a seniority or a
+            # specialism, and each was read before it went in.
+            #
+            # finance, legal and accounting
+            "accountant",
+            "paralegal",
+            "tax analyst",
+            "fp&a",
+            "strategic finance",
+            "treasury",
+            "payroll",
+            "credit risk",
+            "business controller",
+            # people and talent
+            "recruiting coordinator",
+            "talent sourcer",
+            "technical sourcer",
+            "executive assistant",
+            "executive business partner",
+            "people analytics",
+            "employee relations",
+            "benefits analyst",
+            "total rewards",
+            "talent acquisition",
+            # design and content. `product designer` is the single largest
+            # entry here at 20 postings; it flagged twice ("Product Designer,
+            # Engineering Acceleration") and both were read and kept — the org
+            # is engineering, the role is not.
+            "product designer",
+            "brand designer",
+            "motion designer",
+            "web designer",
+            "production designer",
+            "content designer",
+            "design systems lead",
+            # silicon, hardware and datacentre capacity. Every one of these
+            # flags as an engineering title, and every one is engineering the
+            # operator cannot do: "ASIC Package SI/PI Engineer", "RTL Design
+            # Engineer", "Data Center Architect".
+            "asic",
+            "rtl design",
+            "design verification",
+            "pcba",
+            "manufacturing engineer",
+            "data center",
+            "power trading",
+            "power delivery",
+            #
+            # Three candidates were simulated and rejected:
+            #
+            # - `internal audit` matched "Full Stack Engineer - Internal Audit",
+            #   1 of its 4. That is precisely why `audit` was rejected before
+            #   it, and four postings do not buy a rule that removes a backend
+            #   job serving that org.
+            # - `copywriter` and `datacenter` matched nothing. An entry that
+            #   never fires is indistinguishable from one that is wrong, and it
+            #   makes the list longer to read for no removal.
         ]
     )
     # Years of experience a job description may demand before the role is out
@@ -166,10 +225,140 @@ class Settings(BaseSettings):
     # "Senior Software Engineer" means two years at one employer and ten at
     # another, and no list of words can tell those apart.
     filter_max_years_experience: Annotated[int, Field(ge=0, le=30)] = 5
+    # Go-to-market and developer-relations vocabulary, matched against the
+    # description rather than the title — because the titles that carry these
+    # roles ("Deployment Strategist", "Developer Advocate", "Engineering —
+    # Internal AI Transformation") contain no word a title list could catch.
+    #
+    # Every entry is a term a role where you write code does not use. Absent on
+    # purpose: `pipeline` (data pipelines), `customer`, `product`, `deal`,
+    # `community`, `outreach` on its own — each is ordinary in an engineering
+    # posting, and a marker that fires on one is a marker that removes the roles
+    # this exists to protect.
+    #
+    # Grounded in the unresolved phrases of a 100-posting extraction, not
+    # invented ahead of the data.
+    #
+    # No entry may contain a dot or a slash. `tests/unit/invariants` exempts
+    # this field from the invariant-4 host scan on the basis that it holds
+    # role vocabulary and nothing host-shaped; `outreach.io` was a candidate
+    # and is absent for exactly that reason.
+    filter_role_marker_deny: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: [
+            # sales process
+            "quota",
+            "pipeline generation",
+            "outbound pipeline",
+            "prospecting",
+            "cold outreach",
+            "discovery calls",
+            "deal cycle",
+            "sales cycle",
+            "closing deals",
+            "book of business",
+            "upsell",
+            "cross-sell",
+            "icp",
+            "meddic",
+            "bant",
+            "on-target earnings",
+            # `commission` was here and is deliberately gone. Measured against
+            # the live corpus it matched roughly thirty genuine engineering
+            # roles — "Senior Software Engineer, Core Platform", "Senior
+            # Machine Learning Engineer", "Senior Backend Engineer, IAM",
+            # "Electrical Engineer, Actuator Test Infrastructure" — because it
+            # is compensation boilerplate, not a sales signal. It caught nothing
+            # the list did not already catch: every commissioned role in the
+            # corpus also carries `quota` or `on-target earnings`.
+            #
+            # Two survivors are known to be imprecise and are kept because the
+            # threshold protects them. `quota` matches resource quotas
+            # ("Platform Engineer - Compute Capacity"); `salesforce` matches any
+            # role that integrates with it. Neither is decisive alone, and
+            # neither reaches the threshold alone.
+            # go-to-market tooling
+            "salesforce",
+            "gong",
+            "hubspot",
+            # developer relations
+            "developer advocate",
+            "developer advocacy",
+            "devrel",
+            "evangelism",
+            "on camera",
+            "on stage",
+            "conference talks",
+            "growing audience",
+            "twitch",
+        ]
+    )
+    # How many *distinct* markers before a posting is rejected. Above one on
+    # purpose: an engineering advert mentions a "quota" now and then, and a
+    # single accidental hit must not remove it. 0 disables the predicate.
+    #
+    # Two, not the three it started at, and the change was measured rather than
+    # argued. `scout-careers filter markers` over the live corpus put 66
+    # surviving postings at exactly two hits, and all 66 were read: fourteen
+    # Business Development Representatives, seven commissioned Delivery
+    # Solutions Architects, Revenue Operations, GTM Systems, Client Partners.
+    # Not one was a role worth seeing.
+    #
+    # One was rejected on the same evidence. The 213 postings at a single hit
+    # include "Senior Software Engineer, Core Platform", "Senior Site
+    # Reliability Engineer, Ads" and "Engineering - Internal AI Transformation"
+    # — the last of which currently ranks fourth. A single marker is an
+    # accident often enough that acting on it costs more than it saves.
+    filter_role_marker_min: Annotated[int, Field(ge=0, le=10)] = 2
     # Off, and it should stay off: a two-line mail-alert snippet yields garbage
     # requirements, and garbage requirements produce a confident, wrong
     # coverage score — worse than no score at all.
     alert_fidelity_extract: bool = False
+
+    # ---- scoring (MATCH_SCORING.md §13.1) -----------------------------
+    # Written to `match_score.prompt_version`, and part of the unique key
+    # `(posting_id, variant_id, prompt_version)` — so a formula change under a
+    # new string *inserts* beside the old rows instead of destroying the
+    # comparison that shows whether the change was an improvement (§11.3).
+    #
+    # `score.v1`, not the doc's `score.v2`: this is the first implementation,
+    # and starting at v2 would imply a v1 whose rows nobody could produce.
+    #
+    # **Changing any key below bumps this string in the same commit.** A formula
+    # change that reuses a version makes two incomparable score families
+    # indistinguishable in the database, which defeats §11 entirely.
+    scoring_prompt_version: str = "score.v1"
+    # `w_hard` in `base = w_hard·H + (1 - w_hard)·N`. Hard coverage is what a
+    # screen actually reads; the nice bucket is what a cover letter is for.
+    scoring_blend_hard: Annotated[Decimal, Field(ge=0, le=1)] = Decimal("0.80")
+    # Credit for `partial`. Configuration rather than a literal because it is
+    # the one number in the formula whose right value is a matter of taste.
+    scoring_partial_credit: Annotated[Decimal, Field(ge=0, le=1)] = Decimal("0.50")
+    # Minimum family adjacency for `partial` (§4.2). Families looser than this
+    # score below it on purpose and so yield nothing — see `scoring/adjacency`.
+    skill_adjacency_min: Annotated[Decimal, Field(ge=0, le=1)] = Decimal("0.40")
+    # `T`. A ±10% band, not more: tier should break a tie between comparable
+    # roles, never let a dream-tier role the operator cannot do outrank a
+    # strong-tier role they can.
+    scoring_tier_weight_dream: Annotated[Decimal, Field(gt=0, le=2)] = Decimal("1.10")
+    scoring_tier_weight_strong: Annotated[Decimal, Field(gt=0, le=2)] = Decimal("1.00")
+    scoring_tier_weight_volume: Annotated[Decimal, Field(gt=0, le=2)] = Decimal("0.90")
+    # `R`. Fourteen days of grace because ATS boards routinely lag the real
+    # posting date; a 45-day half-life because a role open six weeks is usually
+    # slow-moving or already filled; a 0.65 floor because an old posting is
+    # worth less, not worthless — some of the best-matched roles sit open for
+    # months.
+    scoring_recency_grace_days: Annotated[int, Field(ge=0, le=365)] = 14
+    scoring_recency_half_life_days: Annotated[int, Field(ge=1, le=365)] = 45
+    scoring_recency_floor: Annotated[Decimal, Field(gt=0, le=1)] = Decimal("0.65")
+    # `G`, the hard-requirement floor gate. This is what makes hard coverage
+    # *dominant* rather than merely heavily weighted: without it a variant with
+    # excellent nice-to-have coverage climbs the ranking on a role whose actual
+    # requirements it does not meet — the failure mode that produces confident,
+    # wasted applications.
+    scoring_hard_gate_pass: Annotated[Decimal, Field(ge=0, le=1)] = Decimal("0.60")
+    scoring_hard_gate_warn: Annotated[Decimal, Field(ge=0, le=1)] = Decimal("0.40")
+    scoring_hard_gate_warn_factor: Annotated[Decimal, Field(gt=0, le=1)] = Decimal("0.85")
+    scoring_hard_gate_fail_factor: Annotated[Decimal, Field(gt=0, le=1)] = Decimal("0.65")
 
     # ---- LLM provider and model pinning (CONFIGURATION.md §5.1) -------
     llm_provider: Literal["bedrock", "azure_openai"] = "bedrock"
@@ -181,6 +370,20 @@ class Settings(BaseSettings):
     llm_model_fast: str = "anthropic.claude-3-5-haiku-20241022-v1:0"
     llm_model_strong: str = "anthropic.claude-sonnet-4-20250514-v1:0"
     llm_max_concurrency: Annotated[int, Field(ge=1, le=16)] = 4
+    # Newer Anthropic models reject `temperature` outright — Bedrock answers
+    # "`temperature` is deprecated for this model" with a ValidationException,
+    # so the whole call fails rather than the parameter being ignored. Declared
+    # per alias, mirroring the two model IDs above, because `fast` and `strong`
+    # can sit on different generations.
+    #
+    # Setting this false is not free: `TEMPERATURE[family]` is how extraction
+    # and coverage judgement are held to 0.0, and that is what makes two runs
+    # over the same posting comparable (AI_ARCHITECTURE.md §5.2). Without the
+    # parameter the model's own default applies and that reproducibility is a
+    # property we no longer control — which is why the client logs it once per
+    # process rather than omitting the field quietly.
+    llm_temperature_supported_fast: bool = True
+    llm_temperature_supported_strong: bool = True
 
     # ---- Bedrock credentials (CONFIGURATION.md §5.2) ------------------
     aws_region: str = "ap-south-1"
@@ -190,6 +393,15 @@ class Settings(BaseSettings):
     aws_access_key_id: SecretStr | None = None
     aws_secret_access_key: SecretStr | None = None
     bedrock_endpoint_url: str | None = None
+    # Ask Bedrock to cache the system block. The extraction stage sends one long
+    # static rubric ahead of ~1,500 different job descriptions in a burst, which
+    # is the shape prompt caching exists for. Off is the safe fallback: a model
+    # or region without cache support rejects the `cachePoint` block outright.
+    #
+    # Not free. A cache write is billed *above* the input rate, so a cache
+    # written and never read costs more than not caching — `llm/cost.py` prices
+    # reads and writes separately so that shows up rather than hiding.
+    bedrock_prompt_cache_enabled: bool = True
 
     # ---- cost and the budget breaker (CONFIGURATION.md §5.4) ----------
     # Cost is computed from the `usage` block on every response, never
@@ -367,6 +579,7 @@ class Settings(BaseSettings):
         "default_location_filter",
         "filter_seniority_deny",
         "filter_keyword_deny",
+        "filter_role_marker_deny",
         mode="before",
     )
     @classmethod

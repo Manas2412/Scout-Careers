@@ -76,7 +76,13 @@ def _deps(settings, *, adapters, persister=None, lock=None) -> RunnerDeps:
         client_factory=_client,
         adapter_factory=factory,
         persist=persister or RecordingPersister(),
+        # Both of these do a second pass over the run's session after the
+        # sources finish. These tests are about one broken adapter not taking
+        # the others with it, and the fake session here answers `execute` and
+        # nothing else — standing up one that can also stream postings would be
+        # testing persistence in the file that exists to test isolation.
         dedupe=False,
+        screen=False,
     )
 
 

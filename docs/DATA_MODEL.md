@@ -38,7 +38,11 @@ CREATE TYPE ats_type AS ENUM (
 CREATE TYPE company_tier   AS ENUM ('dream','strong','volume');
 CREATE TYPE company_status AS ENUM ('tracking','paused','blacklisted');
 
-CREATE TYPE requirement_kind AS ENUM ('hard','nice','responsibility','tool');
+CREATE TYPE requirement_kind AS ENUM ('hard','nice','responsibility','tool','condition');
+-- 'condition' added in migration 0003. A line about where the job is, when it is
+-- worked, or what paperwork it needs is a fact about the job's shape, not a
+-- demand on the candidate; only 'hard' and 'nice' carry coverage weight, so
+-- filing one as 'hard' scores it as an unmet gap.
 
 CREATE TYPE coverage_level AS ENUM ('met','partial','missing');
 
@@ -222,6 +226,13 @@ CREATE TABLE requirement (
   kind            requirement_kind NOT NULL,
   text            TEXT             NOT NULL,
   normalised_skill TEXT,
+  -- The model's advisory answer, added in migration 0004. Kept so
+  -- `normalised_skill` can be recomputed against a new vocabulary with no model
+  -- call: a skills.yaml edit changes which token a phrase maps to, not the
+  -- phrase. Without it, re-resolution would LOWER coverage — the hint is what
+  -- carries "Proficient in SQL (ideally PostgreSQL)" to `sql`, since that
+  -- sentence is an alias of nothing.
+  normalised_skill_hint TEXT,
   weight          NUMERIC(3,2)     NOT NULL DEFAULT 1.00,
   ordinal         INTEGER          NOT NULL,
   extracted_at    TIMESTAMPTZ      NOT NULL DEFAULT now(),
@@ -236,6 +247,15 @@ CREATE INDEX requirement_skill_idx   ON requirement (normalised_skill);
 `normalised_skill` maps free text to a controlled vocabulary ("Strong C/C++
 skills" → `cpp`) so coverage can be computed against the variant's skill set
 without another model call.
+
+`prompt_version` carries two halves — `family@version+vocab.version` — because a
+vocabulary edit re-maps phrases and therefore re-ranks postings exactly as a
+prompt edit does. But the two halves are not repaired the same way:
+`scout-careers extract reresolve` recomputes the tokens and replaces **only** the
+vocabulary half, at no model cost. Stamping the current prompt version on those
+rows would claim an extraction pass that never ran, and since extraction skips
+rows already at the current version, would leave them permanently
+un-extractable.
 
 ---
 

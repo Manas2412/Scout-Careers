@@ -27,18 +27,12 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Coroutine
-from typing import Any, TypeVar
+from typing import Any
 
 from scout_careers.db.session import dispose_engine
 
-#: PEP 695 (`def run[T]`) would be the modern spelling and the project targets
-#: 3.12, but the verification environment used for the pre-merge gate is older.
-#: A TypeVar is equivalent at the type level, so the rule is silenced rather
-#: than the check weakened.
-T = TypeVar("T")
 
-
-def run(coro: Coroutine[Any, Any, T]) -> T:  # noqa: UP047
+def run[T](coro: Coroutine[Any, Any, T]) -> T:
     """Run one coroutine to completion and release the database engine.
 
     Args:

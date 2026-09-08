@@ -1,0 +1,156 @@
+{
+  "key": "consulting",
+  "name": "Technology Consultant",
+  "target": "Consulting and solution-engineering roles where delivery outranks stack.",
+  "source_path": "/sessions/jolly-relaxed-goldberg/mnt/outputs/resume/Manas_Sisodia_Consulting.docx",
+  "content": {
+    "header": {
+      "name": "MANAS SISODIA",
+      "contact": "LinkedIn  |  9810904048  |  manassisodia3@gmail.com  |  GitHub"
+    },
+    "summary": "Technology consultant who scopes AI programmes and then delivers them. Authored the AI scope and feasibility assessment for the Prime Minister Internship Scheme — a 144 person-month programme for the Ministry of Corporate Affairs — and personally built five platforms now running in government production, including a citizen-facing assistant live on kheloindia.gov.in and a drafting system piloted in a live 2026 Parliament session. Works the full arc: stakeholder scoping, feasibility and estimation, solution architecture, delivery and cost engineering. National-level athlete and 7x hackathon placer.",
+    "skills": [
+      {
+        "label": "Advisory",
+        "items": [
+          "AI programme scoping",
+          "feasibility assessment",
+          "person-month effort estimation",
+          "use-case consolidation",
+          "phased roadmapping with data gates",
+          "options analysis",
+          "business-case and cost modelling"
+        ]
+      },
+      {
+        "label": "Governance & Compliance",
+        "items": [
+          "Responsible AI and fairness auditing",
+          "DPDP",
+          "OWASP / SAST remediation",
+          "WCAG 2.2 & GIGW accessibility",
+          "ISO 27001 and CMMI L3-aligned SOP",
+          "spec-driven SDLC",
+          "architecture decision records"
+        ]
+      },
+      {
+        "label": "Stakeholder & Delivery",
+        "items": [
+          "Ministry-level stakeholder engagement",
+          "RACI and ownership design",
+          "decision escalation",
+          "scope and requirement documentation",
+          "risk registers",
+          "international benchmarking"
+        ]
+      },
+      {
+        "label": "Solution Architecture",
+        "items": [
+          "HLD / LLD authorship",
+          "RAG and retrieval design",
+          "multi-agent orchestration",
+          "dual-cloud deployment",
+          "API integration strategy",
+          "capacity and cost sizing"
+        ]
+      },
+      {
+        "label": "Technical Environment",
+        "items": [
+          "Python",
+          "FastAPI",
+          "PostgreSQL / pgvector",
+          "Redis",
+          "AWS (Bedrock, ECS Fargate, RDS)",
+          "Azure (App Service, Managed Redis, Service Bus)",
+          "TypeScript",
+          "Next.js",
+          "Docker",
+          "CI/CD"
+        ]
+      }
+    ],
+    "experience": [
+      {
+        "role": "Project Analyst",
+        "employer": "EY  (deployed to National e-Governance Division, MeitY)",
+        "location": "New Delhi",
+        "dates": "May 2026 – Present",
+        "context": "Technology and AI advisory for Government of India digital programmes — Ministry of Corporate Affairs, Ministry of Youth Affairs & Sports, and Sports Authority of India.",
+        "blocks": [
+          {
+            "title": "Prime Minister Internship Scheme — AI programme scoping · Ministry of Corporate Affairs",
+            "bullets": [
+              {
+                "id": "consulting.exp.0.0.0",
+                "text": "Authored the 12,000-word AI Scope Document (14 sections, 24 tables, graded source register) and a 14-page Feasibility Assessment rating 22 interventions on a four-tier rubric — consolidating 19 use cases into 8 features on 6 shared building blocks and reconciling a 144 person-month estimate the source note had left unexplained."
+              },
+              {
+                "id": "consulting.exp.0.0.1",
+                "text": "Designed the delivery model: five phases governed by five data gates, a three-tier data-access contingency so delivery proceeds without portal source code, an equity-preservation constraint with rollback triggers, and ten decisions escalated to the Ministry — four of them Phase-1 blocking."
+              },
+              {
+                "id": "consulting.exp.0.0.2",
+                "text": "Benchmarked 13 international youth-employment programmes tiered by comparability, and set falsifiable targets against dated baselines (offer-to-join 10% → 13–14%; completion of joiners 46% → 60%)."
+              }
+            ]
+          },
+          {
+            "title": "PQ-Bot — Parliamentary Question drafting platform · MYAS / Sports Authority of India",
+            "bullets": [
+              {
+                "id": "consulting.exp.0.1.0",
+                "text": "Sole engineer on a ~60,000-LOC AWS Bedrock platform piloted during the 2026 Parliament monsoon session, grounding official replies in 702 prior tabled Lok Sabha and Rajya Sabha answers with per-sentence citations."
+              },
+              {
+                "id": "consulting.exp.0.1.1",
+                "text": "Delivered against NeGD SOP, ISO 27001 and CMMI L3 targets under a spec-driven SDLC: 312 tests green, SAST closed at zero critical findings, and a GIGW / WCAG 2.2 AA pre-audit with 15 of 23 findings remediated."
+              }
+            ]
+          },
+          {
+            "title": "Khelo India Knowledge Assistant — live in production on kheloindia.gov.in",
+            "bullets": [
+              {
+                "id": "consulting.exp.0.2.0",
+                "text": "Architected and shipped a citizen-facing multilingual assistant (12 languages, 206 documents) and cut run-rate ~60% — ₹9.4L to ₹3.5L per month, ~₹1.35 per query — by re-architecting the stack, while raising judged answer correctness to 3.9 / 4 on a 213-case evaluation bank."
+              }
+            ]
+          },
+          {
+            "title": "Scout — internal bid discovery platform · EY",
+            "bullets": [
+              {
+                "id": "consulting.exp.0.3.0",
+                "text": "Built a crawler and classification service over public procurement portals (GeM, CPPP) with a five-parameter weighted scoring model to qualify tenders against practice fit, plus 31 architecture decision records — delivered alongside the engagement's Senior Manager and Director."
+              }
+            ]
+          },
+          {
+            "title": "MYAS Task Tracker & Khelo India Expenditure Tracker — internal platforms, in production",
+            "bullets": [
+              {
+                "id": "consulting.exp.0.4.0",
+                "text": "Authored the architecture, HLD/LLD and deployment design for both and ran them to production on AWS; the expenditure platform tracks ₹924 Cr of scheme budget across 14 regional centres."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "projects": [],
+    "education": [
+      {
+        "qualification": "B.Tech — Electronics and Communication Engineering  ·  GGSIPU, Delhi",
+        "dates": "2021 – 2025"
+      }
+    ],
+    "achievements": [
+      "7x hackathon placer — incl. 1st Place, UHI Hackathon (Spectrum Slam) (1st of 200+ teams) and 2nd Place, BVP-HEX Hackathon.",
+      "Codeforces Rating 1615 — top ~15% globally across rated competitive programming rounds."
+    ]
+  },
+  "skill_set": []
+}
