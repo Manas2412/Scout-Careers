@@ -398,3 +398,32 @@ def test_a_row_that_never_had_a_token_is_free_to_gain_one() -> None:
     A guard that skipped every hint-less row would block exactly this."""
     assert _is_unrecoverable(StoredRow(None, None), None) is False
     assert _is_unrecoverable(StoredRow(None, None), "vue") is False
+
+
+# --------------------------------------------------------------------------
+# The containment fallback's two safety properties
+# --------------------------------------------------------------------------
+
+
+def test_containment_only_runs_where_whole_phrase_resolution_failed() -> None:
+    """The property that makes `--containment` additive rather than risky.
+
+    A phrase that resolves as a whole keeps that answer, so the fallback can
+    never overwrite a token earned by the stronger inference. The order in
+    `reresolve` is what enforces it, and this is the assertion that says so if
+    the two are ever swapped.
+    """
+    vocab = get_vocabulary()
+    assert vocab.resolve_with_hint("Python", None) == "python"
+    assert vocab.resolve_within("Python") == ("python",)
+
+
+def test_containment_declines_the_sentences_it_cannot_be_sure_of() -> None:
+    """`normalised_skill` is one column, so a sentence naming several tokens
+    gets none of them. Storing a guess for the `language` family — scored 0.00
+    for adjacency because Python is not a substitute for Java — would invent a
+    gap rather than a match."""
+    vocab = get_vocabulary()
+    text = "Proficiency in one or more programming languages (e.g., Go, Python, Java)"
+    assert len(vocab.resolve_within(text)) > 1
+    assert vocab.resolve_one_within(text) is None

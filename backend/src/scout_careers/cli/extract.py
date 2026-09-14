@@ -173,6 +173,10 @@ def estimate(
 @app.command("reresolve")
 def reresolve_command(
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Report and write nothing.")] = False,
+    containment: Annotated[
+        bool,
+        typer.Option("--containment", help="Also match a token found inside a sentence."),
+    ] = False,
     as_json: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     """Recompute every stored skill token against the current vocabulary.
@@ -186,6 +190,12 @@ def reresolve_command(
     Run it after any change to ``skills.yaml``. Read ``lost`` before ``gained``:
     a renamed token or a deleted alias un-resolves every row that used it, and
     that is the failure this command can cause.
+
+    ``--containment`` additionally scans *inside* phrases that resolve to
+    nothing as a whole, taking only unambiguous single-token hits. Simulate it
+    with ``extract containment`` first — that command writes nothing and shows
+    which rows would change, which is how the ``practice``-family exclusion and
+    the ``c++`` boundary bug were both found before they reached a score.
     """
     settings = get_settings()
     configure_logging(settings)
@@ -193,7 +203,9 @@ def reresolve_command(
 
     async def work() -> ReresolveOutcome:
         async with session_scope() as session:
-            outcome = await reresolve(session, vocabulary=vocabulary, dry_run=dry_run)
+            outcome = await reresolve(
+                session, vocabulary=vocabulary, dry_run=dry_run, containment=containment
+            )
             if not dry_run:
                 await session.commit()
             return outcome
@@ -598,28 +610,33 @@ def containment(
     echo(f"{len(found):,} unresolved hard requirement(s) would resolve at min-alias {min_alias}.")
 
     single = [(text, tokens) for text, tokens in found if len(tokens) == 1]
-    multi = [(text, tokens) for text, tokens in found if len(tokens) > 1]
-    alternatives = [
-        (text, alts)
-        for text, _ in multi
-        if (alts := vocab.resolve_alternatives(text, min_alias_length=min_alias)) is not None
-    ]
+    alternatives: list[tuple[str, tuple[str, ...]]] = []
+    rejected: list[tuple[str, tuple[str, ...]]] = []
+    for text, tokens in found:
+        if len(tokens) < 2:
+            continue
+        alts = vocab.resolve_alternatives(text, min_alias_length=min_alias)
+        # Each multi-token row lands in exactly one of these. The first cut of
+        # this report put every >2-token row in `rejected` *including* the
+        # accepted ones, so the same sentence appeared under both headings and
+        # the rejected list read as a catalogue of misses it did not contain.
+        (alternatives if alts is not None else rejected).append((text, alts or tokens))
+
     echo("")
     echo(f"  {len(single):,} resolve to one token      -> normalised_skill")
     echo(f"  {len(alternatives):,} are marked disjunctions   -> normalised_alternatives")
-    echo(f"  {len(multi) - len(alternatives):,} multi-token, unclassified -> left NULL, as today")
+    echo(f"  {len(rejected):,} multi-token, unclassified -> left NULL, as today")
 
     if alternatives:
         echo("")
         echo("  Disjunctions — every one of these must read as 'any one will do':")
         for text, alts in alternatives[:top]:
-            echo(f"    {'|'.join(alts)[:38]:38}  {text[:56]}")
+            echo(f"    {'|'.join(alts)[:30]:30}  {text[:96]}")
 
-    rejected = [(text, tokens) for text, tokens in multi if len(tokens) > 2][:top]
     if rejected:
         echo("")
-        echo("  Rejected multi-token rows — check none of these is a missed disjunction:")
-        for text, tokens in rejected:
-            echo(f"    {'+'.join(tokens)[:38]:38}  {text[:56]}")
+        echo("  Unclassified — check none of these is a disjunction the gates missed:")
+        for text, tokens in rejected[:top]:
+            echo(f"    {'+'.join(tokens)[:30]:30}  {text[:96]}")
     echo("")
     echo("  Nothing written. Lower --min-alias to see what short aliases would do.")

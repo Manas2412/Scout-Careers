@@ -30,7 +30,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 from typing import ClassVar, Final
 
@@ -47,14 +47,85 @@ VOCAB_PATH: Final[Path] = Path(__file__).resolve().parent / "vocab" / "skills.ya
 _NOISE = re.compile(r"[^\w+#/. ]+")
 _SPACES = re.compile(r"\s+")
 
-#: The words that turn a same-family list into "any one of these". Read by
-#: :meth:`Vocabulary.resolve_alternatives` and by nothing else.
+#: Markers that separate alternatives. Counted only **at or after the first
+#: matched alias** — a list is read left to right, so a marker that qualifies it
+#: either sits inside it or trails it.
 #:
-#: "or" carries the whole rule; the rest are the phrasings that surround it and
-#: the slash form ("AWS/GCP/Azure") that omits it. Deliberately absent: the bare
-#: comma. "Postgres, Redis, Kafka" is a stack, not a choice, and admitting the
-#: comma would score holding one of the three as holding all three.
-_DISJUNCTION = re.compile(r"\bor\b|\beither\b|\bany of\b|\bone of\b|/")
+#: Both halves of that window were forced by live rows. Searching the whole
+#: sentence accepted "3-6 years in analytics engineering, data science, **or**
+#: applied AI with strong SQL and Python" — an "or" governing a different clause
+#: entirely, over two tokens the sentence joins with "and". Searching only
+#: *between* the first and last alias then rejected the single commonest
+#: disjunction in the corpus: the trailing qualifier. "…in C, C++, Rust, Python,
+#: **or** comparable low-level environments" puts its marker after the last
+#: alternative, as do "or similar", "or equivalent", "or another X".
+#:
+#: Deliberately absent: the bare comma. "Postgres, Redis, Kafka" is a stack, not
+#: a choice, and admitting the comma would score holding one of the three as
+#: holding all three.
+_INFIX = re.compile(r"\bor\b|/")
+
+#: **Prefix** quantifiers: they scope forward over a list that may never say
+#: "or" — "Fluency in at least one programming language (Python, TypeScript,
+#: Go)". Counted only when they appear *before* the first matched alias.
+_PREFIX = re.compile(r"\bat least one\b|\bone or more\b|\bany of\b|\bone of\b|\beither\b")
+
+#: A count demand wearing a disjunction's clothes. "Working knowledge of **two
+#: or more** common cloud ecosystems" contains "or", names one family, and is
+#: not satisfied by holding one — the exact over-credit the family gate exists
+#: to prevent, arriving through the marker gate instead. Rejected outright
+#: rather than scored as a partial: how to weigh "two of these three" is a
+#: scoring rule nobody has written, and inventing one here would hide it.
+_MULTIPLE_REQUIRED = re.compile(
+    r"\b(?:two|three|four|several|multiple|2|3|4)\s+or\s+more\b|\bboth\b|\ball of\b"
+)
+
+
+#: The families whose members are genuine *substitutes* — pick one, ship.
+#:
+#: Sharing a family is not the same as being interchangeable, and the live
+#: corpus made the difference obvious. Every family here is a market where
+#: vendors compete for the same slot: you run on AWS **or** GCP, you query
+#: Postgres **or** MySQL, you chart in Tableau **or** Power BI.
+#:
+#: ``ai`` is the family this exists to exclude, and it produced most of the
+#: false positives on the first live run. ``llm_engineering``,
+#: ``agentic_workflows``, ``prompt_engineering``, ``rag`` and ``llm_evaluation``
+#: are *facets of one practice*, not competing choices — "applied LLM systems —
+#: RAG, agentic workflows, prompt engineering, evals" wants all four. Prose
+#: about AI is also unusually dense with incidental "or"s ("building **or**
+#: operating agentic systems", "working on **or** with AI products"), so the
+#: family that most needs the conjunction reading is the one most likely to trip
+#: a marker test.
+#:
+#: ``platform`` is excluded for the same reason from the other direction: Git,
+#: CI/CD, Docker and Kubernetes are a stack used together, never a menu.
+#: ``backend`` is genuinely mixed — Django/Flask/FastAPI compete, while
+#: ``microservices`` and ``orm`` do not — and mixed is not good enough here.
+ALTERNATION_FAMILIES: Final[frozenset[str]] = frozenset(
+    {"cloud", "language", "database", "bi_tool", "frontend"}
+)
+
+
+@cache
+def _containment_pattern(alias: str) -> re.Pattern[str]:
+    """A whole-word match for one alias, including the ones ``\\b`` cannot see.
+
+    ``\\b`` is a boundary between a word character and a non-word one, so
+    ``\\bc\\+\\+\\b`` demands a word character immediately after the second
+    ``+`` — meaning it matches "c++x" and never "c++". The same defect silences
+    ``c#`` and ``.net``. Those three sat unmatched in every containment scan
+    since the pass was written, and being *technology proper nouns* they are
+    exactly the aliases it exists to catch.
+
+    So the boundary is chosen per end: ``\\b`` where the alias's own edge
+    character is a word character, and a "not adjacent to a word character"
+    lookaround where it is not. "abc++" still fails to match ``c++``, which is
+    the property ``\\b`` was there for.
+    """
+    left = r"\b" if alias[:1].isalnum() or alias[:1] == "_" else r"(?<!\w)"
+    right = r"\b" if alias[-1:].isalnum() or alias[-1:] == "_" else r"(?!\w)"
+    return re.compile(rf"{left}{re.escape(alias)}{right}")
 
 
 def canonical_key(phrase: str) -> str:
@@ -191,17 +262,26 @@ class Vocabulary:
         a role wanting Go states it in a way some longer alias catches, or it
         does not resolve and shows as a gap.
         """
+        return tuple(sorted({token for token, _, _ in self._matches(text, min_alias_length)}))
+
+    def _matches(self, text: str, min_alias_length: int) -> tuple[tuple[str, int, int], ...]:
+        """Every containment hit as ``(token, start, end)``.
+
+        The offsets exist for :meth:`resolve_alternatives`, which has to know
+        whether an "or" sits *between* the alternatives or somewhere else in the
+        sentence entirely. :meth:`resolve_within` throws them away.
+        """
         lowered = text.lower()
-        found: set[str] = set()
+        hits: list[tuple[str, int, int]] = []
         for alias, token in self.alias_index.items():
             if len(alias) < min_alias_length:
                 continue
             skill = self.skills.get(token)
             if skill is None or skill.family in self.UNSAFE_FOR_CONTAINMENT:
                 continue
-            if re.search(rf"\b{re.escape(alias)}\b", lowered):
-                found.add(token)
-        return tuple(sorted(found))
+            if (match := _containment_pattern(alias).search(lowered)) is not None:
+                hits.append((token, match.start(), match.end()))
+        return tuple(hits)
 
     def resolve_one_within(self, text: str, *, min_alias_length: int = 3) -> str | None:
         """The single token ``text`` names, or ``None`` when it names several.
@@ -246,32 +326,53 @@ class Vocabulary:
           satisfy it. Scored as a disjunction it invents a match, which is the
           direction MATCH_SCORING.md §3.2 says never to be wrong in.
 
-        Two gates, both required, and both structural rather than semantic:
+        Three gates, all required, all structural rather than semantic. Each one
+        was added because the live corpus produced a row the previous set got
+        wrong; none of them is a guess about what a sentence means.
 
-        1. **Every token shares a family.** Nobody demands all three clouds;
-           everybody demands Python *and* Postgres. A cross-family list is a
-           conjunction almost without exception, and this rejects it without
-           reading the sentence. That single test disposes of "Python and
-           Django", "AWS and Kubernetes", "React with TypeScript".
-        2. **The sentence says "or".** Same-family conjunctions do exist —
-           "migrating from MySQL to Postgres", "AWS and Azure both in
-           production" — and only the words separate them from a list. A bare
-           comma list with no marker is rejected rather than guessed at.
+        1. **One family, and a substitutable one.** Sharing a family is not the
+           same as being interchangeable — see :data:`ALTERNATION_FAMILIES`,
+           which is an allow-list precisely because "same family" alone accepted
+           a pile of ``ai`` rows that were enumerations, not choices. This also
+           disposes of "Python and Django", "AWS and Kubernetes".
+        2. **A disjunction marker in the right place.** An "or" or a slash must
+           sit at or after the first alternative (:data:`_INFIX`); a quantifier
+           like "at least one" must sit before it (:data:`_PREFIX`). Position is
+           the whole point: an unanchored "or" matched clauses that had nothing
+           to do with the token list.
+        3. **Not a count demand.** "Two or more cloud ecosystems" satisfies gates
+           1 and 2 and is not satisfied by holding one. See
+           :data:`_MULTIPLE_REQUIRED`.
 
         Gate 2 is what makes the ``language`` family safe to admit. Its
         adjacency is 0.00 *deliberately* — Python does not substitute for Java —
         so a language list is precisely the case a single column scored wrong in
         both directions, and precisely the case a marked disjunction gets right.
+
+        This is a pile of heuristics over a sentence, and it should not be the
+        permanent answer. The durable one is to have extraction emit the
+        alternatives itself, where the model can see the clause structure this
+        can only approximate. Until a golden set exists to measure that prompt
+        change (task 21), these gates are what can be verified against real rows
+        instead of asserted.
         """
-        found = self.resolve_within(text, min_alias_length=min_alias_length)
-        if len(found) < 2:
+        hits = self._matches(text, min_alias_length)
+        tokens = tuple(sorted({token for token, _, _ in hits}))
+        if len(tokens) < 2:
             return None
-        families = {self.skills[token].family for token in found if token in self.skills}
-        if len(families) != 1:
+
+        families = {self.skills[token].family for token in tokens if token in self.skills}
+        if len(families) != 1 or not families <= ALTERNATION_FAMILIES:
             return None
-        if not _DISJUNCTION.search(text.lower()):
+
+        lowered = text.lower()
+        if _MULTIPLE_REQUIRED.search(lowered):
             return None
-        return found
+
+        first = min(start for _, start, _ in hits)
+        if _INFIX.search(lowered, first) or _PREFIX.search(lowered, 0, first):
+            return tokens
+        return None
 
     def resolve_with_hint(self, phrase: str, hint: str | None = None) -> str | None:
         """Stage 1, then the model's advisory hint.
@@ -392,6 +493,7 @@ def get_vocabulary() -> Vocabulary:
 
 
 __all__ = [
+    "ALTERNATION_FAMILIES",
     "VOCAB_PATH",
     "Skill",
     "Vocabulary",

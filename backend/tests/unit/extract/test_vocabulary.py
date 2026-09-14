@@ -15,6 +15,7 @@ import pytest
 
 from scout_careers.common.errors import ConfigError
 from scout_careers.extract.vocabulary import (
+    ALTERNATION_FAMILIES,
     canonical_key,
     get_vocabulary,
     load_vocabulary,
@@ -377,3 +378,96 @@ def test_a_single_token_line_is_never_alternatives() -> None:
     populated for one row, and this is the half of that the resolver owns."""
     vocab = get_vocabulary()
     assert vocab.resolve_alternatives("Production experience in Java or similar") is None
+
+
+def test_a_count_demand_is_not_a_disjunction() -> None:
+    """ "Working knowledge of two or more common Cloud ecosystems" contains
+    "or", names one family, and is *not* satisfied by holding one. It reached
+    the accepted list on the first live run — the family gate cannot catch it,
+    because the family is exactly what makes it look like a choice."""
+    vocab = get_vocabulary()
+    text = "Working knowledge of two or more common Cloud ecosystems (AWS, GCP, Azure)"
+    assert len(vocab.resolve_within(text)) > 1
+    assert vocab.resolve_alternatives(text) is None
+
+
+def test_at_least_one_marks_a_list_that_never_says_or() -> None:
+    """The live corpus writes this shape without an "or" anywhere near the
+    list, so "or" alone left it unclassified."""
+    vocab = get_vocabulary()
+    text = "Fluency in at least one programming language (Python, TypeScript, Go)"
+    alternatives = vocab.resolve_alternatives(text)
+    assert alternatives is not None
+    assert set(alternatives) >= {"python", "typescript"}
+
+
+def test_punctuated_aliases_are_reachable_by_containment() -> None:
+    """`\\b` demands a word character after the second `+`, so `\\bc\\+\\+\\b`
+    matches "c++x" and never "c++". `c++`, `c#` and `.net` were unmatchable in
+    every containment scan since the pass was written — and being technology
+    proper nouns they are exactly what it exists to catch."""
+    vocab = get_vocabulary()
+    found = vocab.resolve_within("Strong systems programming in C++ and Rust", min_alias_length=3)
+    assert "cpp" in found
+
+
+def test_a_punctuated_alias_still_needs_its_boundary() -> None:
+    """The replacement must not become a bare substring search: `abc++` is not
+    a mention of C++."""
+    vocab = get_vocabulary()
+    assert "cpp" not in vocab.resolve_within("The abc++ internal tool", min_alias_length=3)
+
+
+def test_an_or_governing_another_clause_is_not_a_disjunction() -> None:
+    """The residual false positive an unanchored marker test let through.
+
+    "…analytics engineering, data science, or applied AI with strong SQL and
+    Python" has an "or", two `language` tokens, and joins those two tokens with
+    "and". Accepted, it would score Python alone as satisfying a line that asks
+    for both — the invented match §3.2 forbids.
+    """
+    vocab = get_vocabulary()
+    text = "3-6 years in analytics engineering, data science, or applied AI with strong SQL and Python."
+    assert len(vocab.resolve_within(text)) > 1
+    assert vocab.resolve_alternatives(text) is None
+
+
+def test_the_ai_family_enumerates_rather_than_alternates() -> None:
+    """`llm_engineering` and `agentic_workflows` are facets of one practice, not
+    competing choices: this line wants all of them. The `ai` family produced
+    most of the false positives on the first live run, which is why
+    ALTERNATION_FAMILIES is an allow-list and not "any single family"."""
+    vocab = get_vocabulary()
+    text = "Hands-on experience with applied LLM systems — RAG, agentic workflows, prompt engineering, or evals"
+    assert len(vocab.resolve_within(text)) > 1
+    assert vocab.resolve_alternatives(text) is None
+
+
+def test_a_slash_inside_an_unrelated_word_is_not_a_marker() -> None:
+    """ "generative UI/workflow automation" carried the only slash in its
+    sentence, and it sits nowhere near the tokens."""
+    vocab = get_vocabulary()
+    text = "Experience evaluating AI-enabled products (LLMs, agents, generative UI/workflow automation)"
+    assert vocab.resolve_alternatives(text) is None
+
+
+def test_every_alternation_family_is_a_real_family() -> None:
+    """An allow-list that names a family the vocabulary dropped would silently
+    stop admitting anything, and nothing else would say so."""
+    vocab = get_vocabulary()
+    families = {skill.family for skill in vocab.skills.values()}
+    assert families >= ALTERNATION_FAMILIES
+
+
+def test_a_trailing_qualifier_marks_the_list_it_follows() -> None:
+    """The commonest disjunction shape in the corpus, and the one an
+    alternatives-must-sit-*between* window rejected: "or similar", "or
+    comparable", "or equivalent" all trail the last alternative."""
+    vocab = get_vocabulary()
+    text = (
+        "Strong systems programming experience in C, C++, Rust, Python, "
+        "or comparable environments"
+    )
+    alternatives = vocab.resolve_alternatives(text)
+    assert alternatives is not None
+    assert set(alternatives) >= {"cpp", "rust", "python"}

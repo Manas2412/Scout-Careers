@@ -216,6 +216,10 @@ class ReresolveOutcome:
             recomputed from what is stored — see :func:`_is_unrecoverable`.
             Only re-extraction fixes these, and leaving their version stamp
             alone is what keeps them eligible for it.
+        by_containment: Of ``gained``, how many came from the containment
+            fallback rather than from whole-phrase resolution. Counted apart
+            because it is the weaker inference of the two and the one to
+            re-examine when a coverage number looks too good.
         rewritten: Rows written, including those that only needed the new
             version stamp.
     """
@@ -225,6 +229,7 @@ class ReresolveOutcome:
     lost: int = 0
     changed: int = 0
     unrecoverable: int = 0
+    by_containment: int = 0
     rewritten: int = 0
 
     def as_stats(self) -> dict[str, int]:
@@ -235,6 +240,7 @@ class ReresolveOutcome:
             "lost": self.lost,
             "changed": self.changed,
             "unrecoverable": self.unrecoverable,
+            "by_containment": self.by_containment,
             "rewritten": self.rewritten,
         }
 
@@ -245,6 +251,7 @@ async def reresolve(
     vocabulary: Vocabulary | None = None,
     dry_run: bool = False,
     batch_size: int = 500,
+    containment: bool = False,
 ) -> ReresolveOutcome:
     """Recompute every stored ``normalised_skill`` against the vocabulary.
 
@@ -253,6 +260,8 @@ async def reresolve(
         vocabulary: Injectable; defaults to the packaged one.
         dry_run: Count what would change and write nothing.
         batch_size: Rows per flush.
+        containment: Also look for a token *inside* a phrase that resolves to
+            nothing as a whole. Off by default; see below.
 
     Returns:
         What changed.
@@ -267,6 +276,25 @@ async def reresolve(
     The hint is used exactly as extraction used it, which is why it is stored:
     without it this pass would *lower* coverage on every row that resolved
     through a hint rather than through its own text.
+
+    **Containment is opt-in, and only ever adds.** ``resolve`` is a whole-phrase
+    lookup — right for a resume's skills line, where each item *is* a phrase,
+    and wrong for a job requirement, which is a sentence: "Production
+    programming experience in Java" resolved to nothing while ``java`` sat in
+    the index. With ``containment=True`` a phrase that resolves to nothing as a
+    whole is scanned for a token inside it.
+
+    Three properties make that safe enough to write:
+
+    - It runs **only where whole-phrase resolution returned ``None``**, so it
+      can never overwrite a token that resolved properly.
+    - It takes **only unambiguous hits** —
+      :meth:`Vocabulary.resolve_one_within` returns nothing for a sentence
+      naming several tokens, because one column cannot say "any of these".
+    - It **never mints a token**, and skips whole families of aliases that are
+      ordinary English words (``UNSAFE_FOR_CONTAINMENT``).
+
+    It is still the weaker inference, so its gains are counted separately.
     """
     vocab = vocabulary or get_vocabulary()
     outcome = ReresolveOutcome()
@@ -277,6 +305,10 @@ async def reresolve(
         outcome.examined += 1
         before = row.normalised_skill
         after = vocab.resolve_with_hint(row.text_, row.normalised_skill_hint)
+        from_containment = False
+        if after is None and containment:
+            after = vocab.resolve_one_within(row.text_)
+            from_containment = after is not None
         version = rebind_vocabulary(row.prompt_version, vocab)
 
         if _is_unrecoverable(row, after):
@@ -297,6 +329,7 @@ async def reresolve(
         if before != after:
             if before is None:
                 outcome.gained += 1
+                outcome.by_containment += int(from_containment)
             elif after is None:
                 outcome.lost += 1
             else:
