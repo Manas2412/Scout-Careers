@@ -21,10 +21,12 @@ from scout_careers.cli.seed import (
     DEFAULT_BULLET_TAGS_PATH,
     DEFAULT_CLAIMS_PATH,
     DEFAULT_VARIANTS_DIR,
+    TAG_FINGERPRINT_CHARS,
     approved_claim_keys,
     check_bullet_tags,
     load_bullet_tags,
     load_variants,
+    tag_fingerprints,
 )
 from scout_careers.extract.variants import (
     apply_bullet_tags,
@@ -179,6 +181,7 @@ def test_the_shipped_tags_resolve() -> None:
         load_variants(DEFAULT_VARIANTS_DIR),
         load_bullet_tags(DEFAULT_BULLET_TAGS_PATH),
         DEFAULT_CLAIMS_PATH,
+        tag_fingerprints(DEFAULT_BULLET_TAGS_PATH),
     )
 
 
@@ -298,3 +301,84 @@ def test_an_absent_tag_file_is_allowed(tmp_path: Path) -> None:
     """A fresh checkout must still be able to seed. Untagged variants are inert,
     not invalid."""
     assert load_bullet_tags(tmp_path / "nothing.yaml") == {}
+
+
+# --------------------------------------------------------------------------
+# The fingerprint: a tag that moved to a different line
+# --------------------------------------------------------------------------
+
+
+def _one_variant() -> Any:
+    from scout_careers.cli.seed import SeedVariant
+
+    return SeedVariant(key="v", name="V", target="t", content=CONTENT)
+
+
+def _first_bullet_id() -> str:
+    return next(iter(iter_bullets(CONTENT))).id
+
+
+def test_a_tag_whose_line_changed_underneath_it_is_refused(tmp_path: Path) -> None:
+    """The gap the orphan check could not see.
+
+    An ID naming NO bullet already failed. An ID naming a DIFFERENT bullet did
+    not: the position still existed, the skills were real tokens and the claims
+    were approved, so the seed succeeded while the claim moved onto someone
+    else's sentence. On the 2026-10-09 resume rewrite this happened to five
+    tags at once — PQ-Bot's line counts landed on a tracker bullet, Khelo's
+    cost figures on a voice bullet.
+    """
+    bullet_id = _first_bullet_id()
+    with pytest.raises(ValueError, match="written for a different line"):
+        check_bullet_tags(
+            [_one_variant()],
+            {bullet_id: {"skills": [], "claims": []}},
+            tmp_path / "absent.yaml",
+            {bullet_id: "Some sentence that is not this bullet"},
+        )
+
+
+def test_a_reworded_line_still_passes() -> None:
+    """The fingerprint is a prefix, not the whole line, so editing the tail of
+    a bullet does not force a re-review of its claims. 40 characters was chosen
+    against the real rewrite: it caught every genuine move and flagged none of
+    the lines that were merely reworded."""
+    bullet = next(iter(iter_bullets(CONTENT)))
+    check_bullet_tags(
+        [_one_variant()],
+        {bullet.id: {"skills": [], "claims": []}},
+        Path("/nonexistent/claims.yaml"),
+        {bullet.id: bullet.text[:TAG_FINGERPRINT_CHARS]},
+    )
+
+
+def test_an_unstamped_tag_is_refused(tmp_path: Path) -> None:
+    """Otherwise the guard rots: every tag added after this change would opt
+    itself out of the check simply by omitting the field."""
+    bullet_id = _first_bullet_id()
+    with pytest.raises(ValueError, match="carries no `text` fingerprint"):
+        check_bullet_tags(
+            [_one_variant()],
+            {bullet_id: {"skills": [], "claims": []}},
+            tmp_path / "absent.yaml",
+            {bullet_id: ""},
+        )
+
+
+def test_the_fingerprint_check_is_skipped_when_no_stamps_are_supplied() -> None:
+    """Callers that are checking something else pass no fingerprints at all;
+    that must not be the same thing as passing empty ones."""
+    bullet_id = _first_bullet_id()
+    check_bullet_tags(
+        [_one_variant()],
+        {bullet_id: {"skills": [], "claims": []}},
+        Path("/nonexistent/claims.yaml"),
+    )
+
+
+def test_every_shipped_tag_carries_a_fingerprint() -> None:
+    if not DEFAULT_VARIANTS_DIR.is_dir() or not DEFAULT_BULLET_TAGS_PATH.exists():
+        pytest.skip("no shipped variants or tags")
+    stamps = tag_fingerprints(DEFAULT_BULLET_TAGS_PATH)
+    unstamped = sorted(key for key, text in stamps.items() if not text)
+    assert not unstamped, f"run scripts/stamp-bullet-tags.py: {unstamped}"

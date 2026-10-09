@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, time
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Annotated, Any, Literal
 
 import typer
@@ -35,6 +36,7 @@ from scout_careers.extract.variants import (
     apply_bullet_tags,
     bullet_ids,
     bullet_tag_problems,
+    iter_bullets,
     unproven_skills,
     unresolved_items,
     untagged_bullets,
@@ -344,8 +346,16 @@ def check_bullet_tags(
     variants: list[SeedVariant],
     tags: dict[str, dict[str, list[str]]],
     claims_path: Path,
+    fingerprints: Mapping[str, str] | None = None,
 ) -> None:
     """Refuse the whole seed if any bullet tag does not resolve.
+
+    Args:
+        variants: Every variant, as transcribed from the ``.docx``.
+        tags: Bullet ID to ``{skills, claims}``.
+        claims_path: ``seeds/claims.yaml``, for the approved-claim set.
+        fingerprints: Bullet ID to the opening text the tag was written
+            against. Omitted only by tests that are checking something else.
 
     Raises:
         ValueError: listing every problem across every variant.
@@ -354,19 +364,28 @@ def check_bullet_tags(
     that fails — the same pre-flight discipline as ``seed companies``, learned
     from the ``reserved`` tag that failed on row 44 after 43 inserts.
 
-    A tag naming a bullet that no longer exists is a failure too, and the one
-    most likely to happen: bullet IDs are positional, so reordering a resume
-    renumbers them. Silently ignoring an orphaned tag would move its skills and
-    its claims onto whichever line inherited the number.
+    Bullet IDs are **positional**, so there are two ways a tag can end up on the
+    wrong line, and they need different checks:
+
+    - The ID names *no* bullet. Caught by the known-ID sweep below, and loud.
+    - The ID names a *different* bullet. Nothing about the data looks wrong —
+      the position exists, the skills are real tokens, the claims are approved —
+      so the seed used to succeed and the claim would quietly move. On the
+      2026-10-09 rewrite this happened to five tags at once, putting PQ-Bot's
+      line counts behind a tracker bullet and Khelo's cost figures behind a
+      voice bullet. The fingerprint is what makes that case fail.
     """
     vocabulary = get_vocabulary()
     approved = approved_claim_keys(claims_path)
+    stamps = dict(fingerprints or {})
     problems: list[str] = []
     known: set[str] = set()
+    texts: dict[str, str] = {}
 
     for variant in variants:
         merged = apply_bullet_tags(variant.content, tags)
         known |= bullet_ids(merged)
+        texts |= {bullet.id: bullet.text for bullet in iter_bullets(merged)}
         problems += [
             f"{variant.key}/{problem}"
             for problem in bullet_tag_problems(
@@ -375,6 +394,21 @@ def check_bullet_tags(
         ]
 
     problems += [f"tag {key!r} names no bullet in any variant" for key in sorted(set(tags) - known)]
+
+    if fingerprints is not None:
+        for key in sorted(set(tags) & known):
+            stamp = stamps.get(key, "")
+            if not stamp:
+                problems.append(
+                    f"tag {key!r} carries no `text` fingerprint — "
+                    "run scripts/stamp-bullet-tags.py and review the diff"
+                )
+            elif not texts[key].startswith(stamp):
+                problems.append(
+                    f"tag {key!r} was written for a different line.\n"
+                    f"      tagged: {stamp}\n"
+                    f"      now at that position: {texts[key][:TAG_FINGERPRINT_CHARS]}"
+                )
 
     if problems:
         listed = "\n  ".join(problems)
@@ -523,7 +557,12 @@ def variants(
     try:
         get_vocabulary()
         tags = load_bullet_tags(DEFAULT_BULLET_TAGS_PATH)
-        check_bullet_tags(load_variants(resolved), tags, DEFAULT_CLAIMS_PATH)
+        check_bullet_tags(
+            load_variants(resolved),
+            tags,
+            DEFAULT_CLAIMS_PATH,
+            tag_fingerprints(DEFAULT_BULLET_TAGS_PATH),
+        )
     except (ValidationError, ValueError, ScoutError) as exc:
         error(f"The variant files are not valid: {exc}")
         raise typer.Exit(code=1) from exc
@@ -790,7 +829,9 @@ __all__ = [
     "app",
     "approved_claim_keys",
     "check_bullet_tags",
+    "load_bullet_tag_file",
     "load_bullet_tags",
+    "tag_fingerprints",
     "load_claims",
     "load_seed",
     "load_variants",

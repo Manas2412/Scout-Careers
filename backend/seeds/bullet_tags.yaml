@@ -26,9 +26,13 @@
 bullets:
   # ------------------------------------------------------------------ ai_enterprise
   ai_enterprise.exp.0.0.0:
+    text: "Architected and shipped a citizen-facing"
     skills: [rag, azure, llm_engineering, nlp, vector_database, system_design, security_practice]
-    claims: [khelo.languages, khelo.capacity_target]
+    claims:
+      - khelo.languages
+      - khelo.capacity_target
   ai_enterprise.exp.0.0.1:
+    text: "Reduced production run-rate ~60% (₹9.4L "
     skills: [llm_engineering, llm_evaluation, performance_tuning, system_design]
     claims:
       - khelo.cost_reduction
@@ -36,138 +40,213 @@ bullets:
       - khelo.cost_per_query
       - khelo.answer_correctness
       - khelo.eval_bank
-  ai_enterprise.exp.0.0.2:
-    skills: [rag, vector_database, postgres, agentic_workflows, testing, llm_engineering]
-    claims: [khelo.hypothetical_questions, khelo.offline_tests, khelo.engineering_docs]
   ai_enterprise.exp.0.1.0:
+    text: "Sole engineer on a ~60,000-LOC AI drafti"
     skills: [python, rest_api, postgres, rag, system_design, ownership]
-    claims: [pqbot.loc, pqbot.endpoints, pqbot.corpus]
+    claims:
+      - pqbot.loc
+      - pqbot.endpoints
+      - pqbot.corpus
   ai_enterprise.exp.0.1.1:
+    text: "Built the full Bedrock retrieval pipelin"
     skills: [aws, llm_engineering, rag, sql, security_practice, llm_evaluation]
-    claims: [pqbot.pipeline_stages]
-  ai_enterprise.exp.0.1.2:
-    skills: [testing, security_practice, agile]
-    claims: [pqbot.tests, pqbot.sast_clean]
+    claims:
+      - pqbot.pipeline_stages
   ai_enterprise.exp.0.2.0:
+    text: "Authored the 12,000-word AI Scope Docume"
     skills: [stakeholder_communication, system_design, data_analysis]
-    claims: [pmis.scope_document, pmis.use_case_consolidation]
-  ai_enterprise.exp.0.2.1:
-    # Ten decisions escalated to the Ministry — `pmis.escalations` is rejected,
-    # so the number stands unbacked and this line proves shape, not scale.
-    skills: [stakeholder_communication, system_design]
-    claims: []
+    claims:
+      - pmis.scope_document
+      - pmis.use_case_consolidation
   ai_enterprise.exp.1.0.0:
+    text: "Architected a Docker + GitHub Actions CI"
     skills: [docker, ci_cd, aws, nginx, node_backend, postgres, redis]
-    claims: [allatone.deploy_time]
-
-  # ------------------------------------------------------------------- ai_platform
+    claims:
+      - allatone.deploy_time
+  ai_enterprise.exp.1.0.1:
+    text: "Engineered a real-time inventory backend"
+    skills: [node_backend, postgres, redis, security_practice, rest_api]
+    claims:
+      - allatone.permission_consolidation
+  ai_enterprise.exp.2.0.0:
+    text: "Reduced frontend render latency by ~28% "
+    skills: [frontend_general, react, performance_tuning]
+    claims: []
+  ai_enterprise.exp.2.0.1:
+    text: "Built vendor-agnostic normalisation adap"
+    skills: [system_design, rest_api, machine_learning]
+    claims: []
+  ai_enterprise.proj.0.0:
+    text: "Delivered a production-ready RAG system "
+    skills: [rag, llm_engineering, vector_database, python, fastapi]
+    claims: []
+  # ------------------------------------------------------------------ ai_platform
   ai_platform.exp.0.0.0:
+    text: "Owned the full Azure deployment: App Ser"
     skills: [azure, postgres, redis, message_queue, docker, vector_database, system_design, security_practice]
     claims: []
   ai_platform.exp.0.0.1:
-    # 14 feature flags — `khelo.feature_flags` is rejected.
+    text: "Built the streaming path — API enqueues "
     skills: [redis, message_queue, realtime_transport, distributed_systems, system_design]
     claims: []
   ai_platform.exp.0.0.2:
-    skills: [performance_tuning, system_design, testing, llm_evaluation]
-    claims: [khelo.capacity_target, khelo.cost_reduction, khelo.run_rate, khelo.offline_tests]
-  ai_platform.exp.0.1.0:
-    skills: [aws, system_design, postgres, docker, security_practice]
-    claims: [myas.autoscaling]
-  ai_platform.exp.0.1.1:
-    # 15 committed CLI runbook scripts — `myas.runbook_scripts` is rejected.
-    skills: [ci_cd, aws, docker, security_practice, orm]
+    text: "Added a Hindi/English voice channel (bui"
+    skills: [voice_agents, speech_to_text, text_to_speech, system_design, observability]
     claims: []
-  ai_platform.exp.0.1.2:
-    skills: [aws, security_practice, node_backend, ci_cd, postgres]
-    claims: [myas.scheme_budget]
-  ai_platform.exp.0.2.0:
+  ai_platform.exp.0.1.0:
+    text: "Sole engineer on a ~60,000-LOC AWS Bedro"
     skills: [python, aws, performance_tuning, postgres, rest_api, ownership, llm_engineering]
-    claims: [pqbot.loc, pqbot.endpoints, pqbot.connection_pool]
-  ai_platform.exp.0.2.1:
-    skills: [ci_cd, redis, testing, llm_evaluation, security_practice]
-    claims: [pqbot.tests, pqbot.sast_clean]
-  ai_platform.exp.1.0.0:
-    skills: [docker, ci_cd, aws, nginx, node_backend, postgres, redis]
-    claims: [allatone.deploy_time]
-
-  # -------------------------------------------------------------------- ai_product
-  ai_product.exp.0.0.0:
-    skills: [rag, azure, llm_engineering, nlp, message_queue, redis, realtime_transport, vector_database]
-    claims: [khelo.languages]
-  ai_product.exp.0.0.1:
-    skills: [rag, vector_database, postgres, llm_evaluation, llm_engineering]
-    claims: [khelo.hypothetical_questions, khelo.answer_correctness, khelo.eval_bank]
-  ai_product.exp.0.0.2:
-    skills: [agentic_workflows, llm_engineering, rest_api, testing, rag]
     claims:
-      - khelo.offline_tests
-      - khelo.cost_reduction
-      - khelo.run_rate
-      - khelo.cost_per_query
-      - khelo.capacity_target
-  ai_product.exp.0.1.0:
-    skills: [python, rest_api, rag, postgres, ownership]
-    claims: [pqbot.loc, pqbot.endpoints, pqbot.corpus]
-  ai_product.exp.0.1.1:
-    skills: [rag, aws, llm_engineering, vector_database, prompt_engineering]
-    claims: [pqbot.pipeline_stages]
-  ai_product.exp.0.1.2:
-    skills: [sql, security_practice, llm_engineering, testing, llm_evaluation]
-    claims: [pqbot.tests, pqbot.sast_clean]
-  ai_product.exp.0.2.0:
-    skills: [aws, system_design, ci_cd, postgres, docker]
-    claims: [myas.scheme_budget]
-  ai_product.exp.1.0.0:
-    skills: [docker, ci_cd, aws, nginx]
-    claims: [allatone.deploy_time]
-  ai_product.exp.1.0.1:
-    # 3 reconciliation workflows and ~4 hrs/day both rest on rejected claims.
+      - pqbot.loc
+      - pqbot.endpoints
+      - pqbot.connection_pool
+  ai_platform.exp.0.1.1:
+    text: "Wrote the host-agnostic CI gate driven b"
+    skills: [ci_cd, redis, llm_evaluation, testing]
+    claims: []
+  ai_platform.exp.0.2.0:
+    text: "Authored the architecture, HLD/LLD and d"
+    skills: [aws, system_design, postgres, docker, security_practice]
+    claims:
+      - myas.autoscaling
+  ai_platform.exp.1.0.0:
+    text: "Architected a Docker + GitHub Actions CI"
+    skills: [docker, ci_cd, aws, nginx, node_backend, postgres, redis]
+    claims:
+      - allatone.deploy_time
+  ai_platform.exp.1.0.1:
+    text: "Engineered a real-time inventory backend"
     skills: [node_backend, postgres, redis, security_practice, rest_api]
-    claims: [allatone.permission_consolidation]
-
-  # ----------------------------------------------------------------------- backend
+    claims:
+      - allatone.permission_consolidation
+  ai_platform.exp.2.0.0:
+    text: "Reduced frontend render latency by ~28% "
+    skills: [frontend_general, react, performance_tuning]
+    claims: []
+  ai_platform.exp.2.0.1:
+    text: "Built vendor-agnostic normalisation adap"
+    skills: [system_design, rest_api, machine_learning]
+    claims: []
+  ai_platform.proj.0.0:
+    text: "Built a full-stack CI/CD orchestration p"
+    skills: [ci_cd, typescript, nextjs, node_backend]
+    claims: []
+  # ------------------------------------------------------------------ ai_product
+  ai_product.exp.0.0.0:
+    text: "Architected and shipped a citizen-facing"
+    skills: [rag, azure, llm_engineering, nlp, vector_database, system_design, security_practice]
+    claims:
+      - khelo.languages
+      - khelo.capacity_target
+  ai_product.exp.0.0.1:
+    text: "Designed hybrid retrieval that measurabl"
+    skills: [rag, vector_database, postgres, llm_evaluation, llm_engineering]
+    claims:
+      - khelo.hypothetical_questions
+      - khelo.answer_correctness
+      - khelo.eval_bank
+  ai_product.exp.0.0.2:
+    text: "Added a Hindi/English voice channel over"
+    skills: [voice_agents, speech_to_text, text_to_speech, system_design]
+    claims: []
+  ai_product.exp.0.1.0:
+    text: "Sole engineer on a ~60,000-LOC AI drafti"
+    skills: [python, rest_api, postgres, rag, system_design, ownership]
+    claims:
+      - pqbot.loc
+      - pqbot.endpoints
+      - pqbot.corpus
+  ai_product.exp.0.1.1:
+    text: "Built a 10-stage retrieval pipeline on A"
+    skills: [rag, aws, llm_engineering, vector_database, prompt_engineering]
+    claims:
+      - pqbot.pipeline_stages
+  ai_product.exp.0.2.0:
+    text: "Authored the architecture, HLD/LLD and d"
+    skills: [aws, system_design, postgres, docker, security_practice]
+    claims:
+      - myas.autoscaling
+  ai_product.exp.1.0.0:
+    text: "Architected a Docker + GitHub Actions CI"
+    skills: [docker, ci_cd, aws, nginx, node_backend, postgres, redis]
+    claims:
+      - allatone.deploy_time
+  ai_product.exp.1.0.1:
+    text: "Engineered a real-time inventory backend"
+    skills: [node_backend, postgres, redis, security_practice, rest_api]
+    claims:
+      - allatone.permission_consolidation
+  ai_product.exp.2.0.0:
+    text: "Reduced frontend render latency by ~28% "
+    skills: [frontend_general, react, performance_tuning]
+    claims: []
+  ai_product.exp.2.0.1:
+    text: "Built vendor-agnostic normalisation adap"
+    skills: [system_design, rest_api, machine_learning]
+    claims: []
+  ai_product.proj.0.0:
+    text: "Built an end-to-end RAG pipeline for sem"
+    skills: [rag, llm_engineering, vector_database, python]
+    claims: []
+  # ------------------------------------------------------------------ backend
   backend.exp.0.0.0:
+    text: "Built the async FastAPI service and back"
     skills: [fastapi, python, redis, message_queue, realtime_transport, distributed_systems]
     claims: []
   backend.exp.0.0.1:
+    text: "Ran Redis in OSS cluster mode with a has"
     skills: [redis, performance_tuning, system_design, testing]
-    claims: [khelo.capacity_target, khelo.cost_reduction, khelo.run_rate, khelo.offline_tests]
+    claims:
+      - khelo.capacity_target
+      - khelo.cost_reduction
+      - khelo.run_rate
+      - khelo.offline_tests
   backend.exp.0.1.0:
-    # 34 tables and 144 config settings are rejected claims; LOC and endpoints hold.
+    text: "Sole engineer on a ~60,000-LOC Python se"
     skills: [python, rest_api, postgres, ownership]
-    claims: [pqbot.loc, pqbot.endpoints]
+    claims:
+      - pqbot.loc
+      - pqbot.endpoints
   backend.exp.0.1.1:
+    text: "Tuned the concurrency model for high fan"
     skills: [python, performance_tuning, postgres, distributed_systems]
-    claims: [pqbot.connection_pool]
-  backend.exp.0.1.2:
-    skills: [sql, security_practice, testing, postgres]
-    claims: [pqbot.tests, pqbot.sast_clean]
+    claims:
+      - pqbot.connection_pool
   backend.exp.0.2.0:
+    text: "Authored the architecture, HLD/LLD and d"
     skills: [aws, system_design, postgres, docker, security_practice]
-    claims: [myas.autoscaling]
+    claims:
+      - myas.autoscaling
   backend.exp.0.2.1:
-    skills: [ci_cd, aws, docker, security_practice]
-    claims: [myas.scheme_budget]
-  backend.exp.0.3.0:
-    # 190 tests and the five-parameter scoring model are rejected claims.
-    skills: [python, data_pipeline, testing, system_design]
-    claims: [scout.adrs]
+    text: "Built a GitHub OIDC CI/CD pipeline with "
+    skills: [ci_cd, aws, docker, security_practice, orm]
+    claims: []
   backend.exp.1.0.0:
+    text: "Architected a Docker + GitHub Actions CI"
     skills: [docker, ci_cd, aws, nginx, node_backend, postgres, redis]
-    claims: [allatone.deploy_time]
+    claims:
+      - allatone.deploy_time
+  backend.exp.1.0.1:
+    text: "Engineered a real-time inventory backend"
+    skills: [node_backend, postgres, redis, security_practice, rest_api]
+    claims:
+      - allatone.permission_consolidation
+  backend.exp.2.0.0:
+    text: "Reduced frontend render latency by ~28% "
+    skills: [frontend_general, react, performance_tuning]
+    claims: []
+  backend.exp.2.0.1:
+    text: "Built vendor-agnostic normalisation adap"
+    skills: [system_design, rest_api, machine_learning]
+    claims: []
   backend.proj.0.0:
+    text: "Scaled an event-driven market data pipel"
     skills: [data_pipeline, redis, distributed_systems, message_queue, performance_tuning]
-    claims: [8byte.throughput]
-  backend.proj.0.1:
-    skills: [redis, realtime_transport, performance_tuning, microservices]
-    claims: [8byte.cache_reduction, 8byte.ws_latency]
-  backend.proj.1.0:
-    skills: [observability, node_backend, message_queue, performance_tuning, distributed_systems]
-    claims: [betterstack.endpoints, betterstack.workers]
-
-  # ---------------------------------------------------------------------- combined
+    claims:
+      - 8byte.throughput
+  # ------------------------------------------------------------------ combined
   combined.exp.0.0.0:
+    text: "Architected a citizen-facing multilingua"
     skills: [rag, vector_database, postgres, llm_engineering, nlp, llm_evaluation]
     claims:
       - khelo.languages
@@ -175,60 +254,102 @@ bullets:
       - khelo.answer_correctness
       - khelo.eval_bank
   combined.exp.0.0.1:
+    text: "Built the async FastAPI service and work"
     skills: [fastapi, python, redis, message_queue, realtime_transport, performance_tuning]
-    claims: [khelo.cost_reduction, khelo.run_rate, khelo.offline_tests]
-  combined.exp.0.1.0:
-    skills: [python, aws, rag, llm_engineering, ownership]
-    claims: [pqbot.loc, pqbot.pipeline_stages]
-  combined.exp.0.1.1:
-    skills: [rest_api, postgres, performance_tuning, sql, security_practice, testing]
-    claims: [pqbot.endpoints, pqbot.connection_pool, pqbot.tests, pqbot.sast_clean]
-  combined.exp.0.2.0:
-    # Autoscaling and the scheme budget belong to the next bullet, not this one.
-    skills: [aws, system_design, ci_cd, docker, postgres, security_practice]
-    claims: []
-  combined.exp.0.2.1:
-    skills: [nextjs, typescript, orm, react, node_backend, security_practice]
-    claims: [myas.prisma_models, myas.rbac_roles, myas.scheme_budget]
-  combined.exp.0.3.0:
-    skills: [stakeholder_communication, system_design]
-    claims: [pmis.scope_document, pmis.use_case_consolidation]
-  combined.exp.0.4.0:
-    skills: [python, data_pipeline, testing, system_design]
-    claims: [scout.adrs]
-  combined.exp.1.0.0:
-    skills: [docker, ci_cd, aws, nginx, node_backend, postgres, redis]
-    claims: [allatone.deploy_time]
-
-  # -------------------------------------------------------------------- consulting
-  consulting.exp.0.0.0:
-    skills: [stakeholder_communication, system_design, data_analysis]
-    claims: [pmis.scope_document, pmis.use_case_consolidation]
-  consulting.exp.0.0.1:
-    skills: [stakeholder_communication, system_design]
-    claims: []
-  consulting.exp.0.0.2:
-    # The benchmarking set and the targets are both rejected claims.
-    skills: [data_analysis, stakeholder_communication, forecasting]
-    claims: []
-  consulting.exp.0.1.0:
-    skills: [python, aws, rag, ownership]
-    claims: [pqbot.loc, pqbot.corpus]
-  consulting.exp.0.1.1:
-    skills: [testing, security_practice, agile, stakeholder_communication]
-    claims: [pqbot.tests, pqbot.sast_clean]
-  consulting.exp.0.2.0:
-    skills: [rag, llm_engineering, llm_evaluation, performance_tuning]
     claims:
-      - khelo.languages
       - khelo.cost_reduction
       - khelo.run_rate
-      - khelo.cost_per_query
-      - khelo.answer_correctness
-      - khelo.eval_bank
-  consulting.exp.0.3.0:
-    skills: [python, data_pipeline, system_design, stakeholder_communication]
-    claims: [scout.adrs]
-  consulting.exp.0.4.0:
-    skills: [aws, system_design, ownership]
-    claims: [myas.scheme_budget]
+      - khelo.offline_tests
+  combined.exp.0.0.2:
+    text: "Added a Hindi/English voice channel over"
+    skills: [voice_agents, speech_to_text, text_to_speech, system_design]
+    claims: []
+  combined.exp.0.1.0:
+    text: "Sole engineer on a ~60,000-LOC AWS Bedro"
+    skills: [python, aws, performance_tuning, postgres, rest_api, ownership, llm_engineering]
+    claims:
+      - pqbot.loc
+      - pqbot.endpoints
+      - pqbot.connection_pool
+  combined.exp.0.1.1:
+    text: "95 REST endpoints, 34 Postgres tables, 3"
+    skills: [rest_api, postgres, performance_tuning, sql, security_practice, testing]
+    claims:
+      - pqbot.endpoints
+      - pqbot.connection_pool
+      - pqbot.tests
+      - pqbot.sast_clean
+  combined.exp.0.2.0:
+    text: "Authored the 12,000-word AI Scope Docume"
+    skills: [stakeholder_communication, system_design, data_analysis]
+    claims:
+      - pmis.scope_document
+      - pmis.use_case_consolidation
+  combined.exp.1.0.0:
+    text: "Architected a Docker + GitHub Actions CI"
+    skills: [docker, ci_cd, aws, nginx, node_backend, postgres, redis]
+    claims:
+      - allatone.deploy_time
+  combined.exp.1.0.1:
+    text: "Engineered a real-time inventory backend"
+    skills: [node_backend, postgres, redis, security_practice, rest_api]
+    claims:
+      - allatone.permission_consolidation
+  combined.exp.2.0.0:
+    text: "Reduced frontend render latency by ~28% "
+    skills: [frontend_general, react, performance_tuning]
+    claims: []
+  combined.exp.2.0.1:
+    text: "Built vendor-agnostic normalisation adap"
+    skills: [system_design, rest_api, machine_learning]
+    claims: []
+  combined.proj.0.0:
+    text: "Built an end-to-end RAG pipeline for sem"
+    skills: [rag, llm_engineering, vector_database, python]
+    claims: []
+  # ------------------------------------------------------------------ consulting
+  consulting.exp.0.0.0:
+    text: "Authored the 12,000-word AI Scope Docume"
+    skills: [stakeholder_communication, system_design, data_analysis]
+    claims:
+      - pmis.scope_document
+      - pmis.use_case_consolidation
+  consulting.exp.0.0.1:
+    text: "Designed the delivery model: five phases"
+    skills: [stakeholder_communication, system_design]
+    claims: []
+  consulting.exp.0.1.0:
+    text: "Sole engineer on a ~60,000-LOC AWS Bedro"
+    skills: [python, aws, performance_tuning, postgres, rest_api, ownership, llm_engineering]
+    claims:
+      - pqbot.loc
+      - pqbot.endpoints
+      - pqbot.connection_pool
+  consulting.exp.0.1.1:
+    text: "Delivered against NeGD SOP, ISO 27001 an"
+    skills: [testing, security_practice, agile, stakeholder_communication]
+    claims:
+      - pqbot.tests
+      - pqbot.sast_clean
+  consulting.exp.1.0.0:
+    text: "Architected a Docker + GitHub Actions CI"
+    skills: [docker, ci_cd, aws, nginx, node_backend, postgres, redis]
+    claims:
+      - allatone.deploy_time
+  consulting.exp.1.0.1:
+    text: "Engineered a real-time inventory backend"
+    skills: [node_backend, postgres, redis, security_practice, rest_api]
+    claims:
+      - allatone.permission_consolidation
+  consulting.exp.2.0.0:
+    text: "Reduced frontend render latency by ~28% "
+    skills: [frontend_general, react, performance_tuning]
+    claims: []
+  consulting.exp.2.0.1:
+    text: "Built vendor-agnostic normalisation adap"
+    skills: [system_design, rest_api, machine_learning]
+    claims: []
+  consulting.proj.0.0:
+    text: "Delivered a production-ready RAG system "
+    skills: [rag, llm_engineering, vector_database, python, fastapi]
+    claims: []

@@ -2,26 +2,25 @@
   "key": "ai_product",
   "name": "AI Product Engineer",
   "target": "Product-facing AI roles at startups shipping user-visible LLM features.",
-  "source_path": "/sessions/jolly-relaxed-goldberg/mnt/outputs/resume/Manas_Sisodia_AI_Product.docx",
+  "source_path": "/tmp/newres/Manas_Sisodia_AI_Product.docx",
   "content": {
     "header": {
       "name": "MANAS SISODIA",
       "contact": "LinkedIn  |  9810904048  |  manassisodia3@gmail.com  |  GitHub"
     },
-    "summary": "Applied AI engineer who owns retrieval systems end to end — architecture, eval harness, LLM serving and cloud deployment. Shipped a multilingual RAG assistant now live in production on kheloindia.gov.in answering citizens in 12 languages, and sole-engineered a 60,000-LOC Parliamentary Question drafting platform piloted in a live 2026 Parliament session. Ships against measurement, not intuition: 213-case eval banks, judge-scored regression runs and latency budgets gate every release. National-level athlete and 7x hackathon placer.",
+    "summary": "Applied AI engineer who owns retrieval systems end to end — architecture, eval harness, LLM serving and cloud deployment. Shipped a multilingual RAG assistant now live in production on kheloindia.gov.in answering citizens in 12 languages, and sole-engineered a 60,000-LOC Parliamentary Question drafting platform piloted in a live 2026 Parliament session. Ships against measurement, not intuition: 213-case eval banks, judge-scored regression runs and latency budgets gate every release.",
     "skills": [
       {
         "label": "AI / ML",
         "items": [
           "RAG architecture",
           "LangGraph multi-agent orchestration",
-          "hybrid retrieval (Reciprocal Rank Fusion)",
+          "hybrid retrieval (RRF)",
           "HyDE / HyQ query expansion",
           "cross-encoder reranking",
           "eval harness design",
           "LLM-as-judge scoring",
           "prompt versioning",
-          "streaming inference",
           "semantic caching"
         ]
       },
@@ -43,25 +42,8 @@
           "pg_trgm",
           "PostgreSQL",
           "Redis (OSS cluster, RediSearch)",
-          "Azure AI Document Intelligence",
           "Pinecone",
           "Chroma"
-        ]
-      },
-      {
-        "label": "Backend & Infra",
-        "items": [
-          "Python",
-          "FastAPI",
-          "SQLAlchemy 2.0 (async)",
-          "Pydantic v2",
-          "Alembic",
-          "SSE streaming",
-          "Azure Service Bus",
-          "Node.js",
-          "Docker",
-          "Azure (App Service, ACR)",
-          "AWS (ECS Fargate, RDS, Bedrock)"
         ]
       },
       {
@@ -73,30 +55,51 @@
           "SQL",
           "C++"
         ]
+      },
+      {
+        "label": "Backend",
+        "items": [
+          "FastAPI",
+          "SQLAlchemy 2.0 (async)",
+          "Pydantic v2",
+          "Alembic",
+          "SSE streaming",
+          "Azure Service Bus",
+          "Node.js"
+        ]
+      },
+      {
+        "label": "Cloud & DevOps",
+        "items": [
+          "Azure (App Service, ACR)",
+          "AWS (ECS Fargate, RDS, Bedrock)",
+          "Docker",
+          "GitHub Actions"
+        ]
       }
     ],
     "experience": [
       {
         "role": "Project Analyst",
-        "employer": "EY  (deployed to National e-Governance Division, MeitY)",
+        "employer": "EY (deployed to National e-Governance Division, MeitY)",
         "location": "New Delhi",
         "dates": "May 2026 – Present",
-        "context": "AI engineering for Government of India digital platforms — Ministry of Youth Affairs & Sports, Sports Authority of India, and Ministry of Corporate Affairs.",
+        "context": "Lead a team of 4 interns and 1 analyst. AI engineering for Government of India digital platforms — Ministry of Youth Affairs & Sports, Sports Authority of India, and Ministry of Corporate Affairs.",
         "blocks": [
           {
             "title": "Khelo India Knowledge Assistant — live in production on kheloindia.gov.in",
             "bullets": [
               {
                 "id": "ai_product.exp.0.0.0",
-                "text": "Architected and shipped a citizen-facing multilingual RAG assistant on Azure — 206 documents / 11,611 chunks, 12 languages (9 voice-enabled) via Bhashini with Sarvam fallback, streaming SSE answers off a Service Bus queue and Redis pub/sub worker pipeline."
+                "text": "Architected and shipped a citizen-facing multilingual RAG assistant on Azure, 12 languages (9 voice-enabled) via Bhashini with Sarvam fallback, streaming SSE answers off a Service Bus queue and Redis pub/sub worker."
               },
               {
                 "id": "ai_product.exp.0.0.1",
-                "text": "Designed hybrid retrieval that measurably beat naive cosine search: pgvector ANN over both content chunks and 86,000 generated hypothetical questions, fused with pg_trgm lexical search via Reciprocal Rank Fusion, per-document diversity caps and an optional Cohere cross-encoder — lifting judged correctness to 3.9 / 4 across a 213-case eval bank over 28 archived runs."
+                "text": "Designed hybrid retrieval that measurably beat naive cosine search: pgvector ANN over content chunks and 86,000 generated hypothetical questions, fused with pg_trgm lexical search via Reciprocal Rank Fusion, plus an optional Cohere cross-encoder — lifting judged correctness to 3.9 / 4 across a 213-case eval bank."
               },
               {
                 "id": "ai_product.exp.0.0.2",
-                "text": "Built a LangGraph multi-agent router fanning vector retrieval and live CMS API orchestration out concurrently (~30 curated endpoints, no model-authored SQL) behind an env-flag kill switch; 532 offline tests across 40 modules; cut run-rate ~60% (₹9.4L → ₹3.5L/month) at ~₹1.35 per query, sized for 10,000 daily users."
+                "text": "Added a Hindi/English voice channel over the same assistant (built, in UAT) — Pipecat (Silero VAD → Sarvam STT → brain → Sarvam TTS), turn gate and echo guard, whole-buffer streaming redaction; architected so the gateway owns audio and the bot owns answers, rejecting two designs that added a second LLM hop and +1–2s. Time-to-first-token 12.6s → 9.1s; 40 gateway tests."
               }
             ]
           },
@@ -109,11 +112,7 @@
               },
               {
                 "id": "ai_product.exp.0.1.1",
-                "text": "Built a 10-stage retrieval pipeline on AWS Bedrock — semantic cache, LLM query planner, verbatim answer-of-record reuse, pgvector search, LLM reranking, and recency blending with per-claim volatility half-lives — emitting per-sentence citations behind pre- and post-generation validation gates."
-              },
-              {
-                "id": "ai_product.exp.0.1.2",
-                "text": "Added an LLM text-to-SQL layer over uploaded datasets hardened with sqlglot AST validation (SELECT-only, prefixed tables, statement timeouts, row caps) inside read-only transactions; two eval harnesses gate releases, 312 backend tests green, SAST closed at zero critical findings."
+                "text": "Built a 10-stage retrieval pipeline on AWS Bedrock — semantic cache, LLM query planner, verbatim answer-of-record reuse, pgvector search, LLM reranking and recency blending with per-claim volatility half-lives — emitting per-sentence citations behind validation gates."
               }
             ]
           },
@@ -122,7 +121,7 @@
             "bullets": [
               {
                 "id": "ai_product.exp.0.2.0",
-                "text": "Authored the system architecture, HLD/LLD and deployment design for both; re-platformed the task tracker from EC2/PM2 onto ECS Fargate (ARM64) + RDS Postgres 16 + ALB/WAF with GitHub OIDC CI/CD that runs migrations as an in-VPC one-off task and aborts the deploy on failure. Expenditure platform tracks ₹924 Cr of scheme budget across 14 regional centres."
+                "text": "Authored the architecture, HLD/LLD and deployment design for both; re-platformed onto ECS Fargate (ARM64) + RDS Postgres 16 + ALB/WAF with a GitHub OIDC pipeline whose migrations run as an in-VPC one-off task and abort the deploy on failure. Expenditure platform tracks ₹924 Cr across 14 regional centres."
               }
             ]
           }
@@ -140,27 +139,63 @@
             "bullets": [
               {
                 "id": "ai_product.exp.1.0.0",
-                "text": "Architected a Docker + GitHub Actions CI/CD pipeline on AWS EC2 + Nginx, cutting deploy time 80% (15 min to under 3) with zero-downtime rolling releases."
+                "text": "Architected a Docker + GitHub Actions CI/CD pipeline on AWS EC2 + Nginx, cutting deploy time 80% (15 min to under 3) with zero-downtime rolling releases, saving ~2 hrs of manual effort per cycle."
               },
               {
                 "id": "ai_product.exp.1.0.1",
-                "text": "Engineered a real-time inventory backend (Node.js, PostgreSQL, Redis) automating 3 reconciliation workflows and eliminating ~4 hrs/day of ops overhead; consolidated 15+ scattered permission checks into a single JWT RBAC middleware layer."
+                "text": "Engineered a real-time inventory backend (Node.js, PostgreSQL, Redis) automating 3 reconciliation workflows, eliminating ~4 hrs/day of ops overhead, and consolidating 15+ scattered permission checks into one JWT RBAC middleware layer."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "role": "Software Developer Intern",
+        "employer": "CeoTech",
+        "location": "Delhi",
+        "dates": "Aug 2024 – Oct 2024",
+        "context": "Ed-tech platform delivering courses in web development, ML, and embedded systems to students across India.",
+        "blocks": [
+          {
+            "title": "",
+            "bullets": [
+              {
+                "id": "ai_product.exp.2.0.0",
+                "text": "Reduced frontend render latency by ~28% on a live multi-user ML platform (React DevTools Profiler) via React.memo and lazy loading — zero backend changes, zero regressions."
+              },
+              {
+                "id": "ai_product.exp.2.0.1",
+                "text": "Built vendor-agnostic normalisation adapters over third-party ML APIs, fully decoupling business logic from vendor schemas and making future API swaps non-breaking."
               }
             ]
           }
         ]
       }
     ],
-    "projects": [],
+    "projects": [
+      {
+        "title": "CodeBase Q&A with RAG   Python · LangChain · Pinecone · Voyage AI · Cohere reranker · Ollama · tree-sitter",
+        "bullets": [
+          {
+            "id": "ai_product.proj.0.0",
+            "text": "Built an end-to-end RAG pipeline for semantic code understanding: AST-aware ingestion (tree-sitter) → Voyage AI embeddings → pgvector → HyDE expansion → Cohere reranking → streaming Ollama LLM."
+          }
+        ]
+      }
+    ],
     "education": [
       {
-        "qualification": "B.Tech — Electronics and Communication Engineering  ·  GGSIPU, Delhi",
+        "qualification": "B.Tech — Electronics and Communication Engineering",
         "dates": "2021 – 2025"
+      },
+      {
+        "qualification": "Guru Gobind Singh Indraprastha University, Delhi  ·  Minor specialisation: Computer Science",
+        "dates": "CGPA 7.49 / 10"
       }
     ],
     "achievements": [
-      "7x hackathon placer — including 1st Place, UHI Hackathon (Spectrum Slam): UHI-compliant mental health platform, 1st among 200+ teams.",
-      "2nd Place — BVP-HEX Hackathon | Blockchain-based supply chain traceability system.",
+      "7x hackathon placer — incl. 1st Place, UHI Hackathon (Spectrum Slam), 1st of 200+ teams.",
+      "2nd Place — BVP-HEX Hackathon  |  Blockchain pharmaceutical supply chain traceability.",
       "Codeforces Rating 1615 — top ~15% globally across rated competitive programming rounds."
     ]
   },

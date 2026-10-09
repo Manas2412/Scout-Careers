@@ -18,7 +18,7 @@
 # proposals rather than by guessing at breadth up front — an alias nobody ever
 # hits is indistinguishable from one that is wrong.
 
-version: vocab.2026-09-07.2
+version: vocab.2026-10-09.1
 
 skills:
   # --- languages -----------------------------------------------------------
@@ -234,6 +234,28 @@ skills:
       ["agents", "ai agents", "agentic", "tool use", "function calling", "multi-agent",
        "langgraph", "langgraph multi-agent orchestration", "multi-agent orchestration",
        "agent orchestration", "langchain"]
+
+  # Voice. Added 2026-10-09 with the Khelo India voice channel: the resume now
+  # claims speech work that resolved to nothing, so those bullets could prove
+  # no requirement at all. Family `ai`, which ALTERNATION_FAMILIES excludes from
+  # "any one of these" — right here, since STT and TTS are two halves of one
+  # pipeline, never a choice between them.
+  - token: speech_to_text
+    label: Speech-to-text
+    family: ai
+    aliases: ["stt", "asr", "automatic speech recognition", "speech recognition", "transcription",
+       "whisper", "saaras", "voice activity detection", "vad", "silero"]
+
+  - token: text_to_speech
+    label: Text-to-speech
+    family: ai
+    aliases: ["tts", "speech synthesis", "voice synthesis", "bulbul", "neural tts"]
+
+  - token: voice_agents
+    label: Voice agents
+    family: ai
+    aliases: ["voice agent", "voice agents", "voice assistant", "conversational voice",
+       "voice bot", "ivr", "turn-taking", "barge-in", "pipecat", "livekit", "telephony"]
 
   - token: llm_engineering
     label: LLM application engineering

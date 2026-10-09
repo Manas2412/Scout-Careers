@@ -588,3 +588,51 @@ claims:
     confidentiality: public
     tags: [achievement]
     verified_at: 2026-09-07
+
+  # ── Khelo India Voice Agent ──────────────────────────────────────────────
+  # Added 2026-10-09 with the voice channel. Drafts: verdict `no` until the
+  # operator checks each figure against a run they can reproduce. Until then
+  # the voice bullets cite no claims, and MATCH_SCORING.md §4.2 degrades them
+  # to `partial` because they are quantified — which is the correct answer,
+  # not a defect to work around.
+  - key: voice.ttft
+    statement: Median time-to-first-token on the voice brain cut from 12.6s to 9.1s.
+    metric_value: "12.6 -> 9.1"
+    metric_unit: seconds
+    project: Khelo India Voice Agent
+    verdict: no
+    confidentiality: internal
+    tags: [latency, voice]
+    verified_at: 2026-10-09
+
+  - key: voice.gateway_tests
+    statement: 40 offline tests on the voice gateway, no network.
+    metric_value: "40"
+    metric_unit: tests
+    project: Khelo India Voice Agent
+    verdict: no
+    confidentiality: internal
+    tags: [testing, voice]
+    verified_at: 2026-10-09
+
+  - key: voice.bot_tests
+    statement: 597 backend tests green on the bot with the voice adapter in place.
+    metric_value: "597"
+    metric_unit: tests
+    project: Khelo India Voice Agent
+    verdict: no
+    confidentiality: internal
+    tags: [testing, voice]
+    verified_at: 2026-10-09
+
+  # ── CeoTech ──────────────────────────────────────────────────────────────
+  # New to the seeds: the internship was absent from the earlier resumes.
+  - key: ceotech.render_latency
+    statement: Frontend render latency reduced ~28% on a live multi-user ML platform.
+    metric_value: "28"
+    metric_unit: percent
+    project: CeoTech
+    verdict: no
+    confidentiality: internal
+    tags: [performance]
+    verified_at: 2026-10-09

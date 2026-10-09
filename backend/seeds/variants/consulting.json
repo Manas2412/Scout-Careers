@@ -2,13 +2,13 @@
   "key": "consulting",
   "name": "Technology Consultant",
   "target": "Consulting and solution-engineering roles where delivery outranks stack.",
-  "source_path": "/sessions/jolly-relaxed-goldberg/mnt/outputs/resume/Manas_Sisodia_Consulting.docx",
+  "source_path": "/tmp/newres/Manas_Sisodia_Consulting.docx",
   "content": {
     "header": {
       "name": "MANAS SISODIA",
       "contact": "LinkedIn  |  9810904048  |  manassisodia3@gmail.com  |  GitHub"
     },
-    "summary": "Technology consultant who scopes AI programmes and then delivers them. Authored the AI scope and feasibility assessment for the Prime Minister Internship Scheme — a 144 person-month programme for the Ministry of Corporate Affairs — and personally built five platforms now running in government production, including a citizen-facing assistant live on kheloindia.gov.in and a drafting system piloted in a live 2026 Parliament session. Works the full arc: stakeholder scoping, feasibility and estimation, solution architecture, delivery and cost engineering. National-level athlete and 7x hackathon placer.",
+    "summary": "Technology consultant who scopes AI programmes and then delivers them. Authored the AI scope and feasibility assessment for the Prime Minister Internship Scheme — a 144 person-month programme for the Ministry of Corporate Affairs — and personally built five platforms now running in government production, including a citizen-facing assistant live on kheloindia.gov.in and a drafting system piloted in a live 2026 Parliament session. Works the full arc: stakeholder scoping, feasibility and estimation, solution architecture, delivery and cost engineering.",
     "skills": [
       {
         "label": "Advisory",
@@ -57,16 +57,29 @@
         ]
       },
       {
-        "label": "Technical Environment",
+        "label": "Languages",
         "items": [
           "Python",
+          "TypeScript",
+          "JavaScript",
+          "SQL",
+          "C++"
+        ]
+      },
+      {
+        "label": "Backend & Data",
+        "items": [
           "FastAPI",
+          "Next.js",
           "PostgreSQL / pgvector",
-          "Redis",
+          "Redis"
+        ]
+      },
+      {
+        "label": "Cloud & DevOps",
+        "items": [
           "AWS (Bedrock, ECS Fargate, RDS)",
           "Azure (App Service, Managed Redis, Service Bus)",
-          "TypeScript",
-          "Next.js",
           "Docker",
           "CI/CD"
         ]
@@ -75,10 +88,10 @@
     "experience": [
       {
         "role": "Project Analyst",
-        "employer": "EY  (deployed to National e-Governance Division, MeitY)",
+        "employer": "EY (deployed to National e-Governance Division, MeitY)",
         "location": "New Delhi",
         "dates": "May 2026 – Present",
-        "context": "Technology and AI advisory for Government of India digital programmes — Ministry of Corporate Affairs, Ministry of Youth Affairs & Sports, and Sports Authority of India.",
+        "context": "Lead a team of 4 interns and 1 analyst. Technology and AI advisory for Government of India digital programmes — Ministry of Corporate Affairs, Ministry of Youth Affairs & Sports, and Sports Authority of India.",
         "blocks": [
           {
             "title": "Prime Minister Internship Scheme — AI programme scoping · Ministry of Corporate Affairs",
@@ -90,10 +103,6 @@
               {
                 "id": "consulting.exp.0.0.1",
                 "text": "Designed the delivery model: five phases governed by five data gates, a three-tier data-access contingency so delivery proceeds without portal source code, an equity-preservation constraint with rollback triggers, and ten decisions escalated to the Ministry — four of them Phase-1 blocking."
-              },
-              {
-                "id": "consulting.exp.0.0.2",
-                "text": "Benchmarked 13 international youth-employment programmes tiered by comparability, and set falsifiable targets against dated baselines (offer-to-join 10% → 13–14%; completion of joiners 46% → 60%)."
               }
             ]
           },
@@ -109,46 +118,78 @@
                 "text": "Delivered against NeGD SOP, ISO 27001 and CMMI L3 targets under a spec-driven SDLC: 312 tests green, SAST closed at zero critical findings, and a GIGW / WCAG 2.2 AA pre-audit with 15 of 23 findings remediated."
               }
             ]
-          },
+          }
+        ]
+      },
+      {
+        "role": "Full Stack Developer Intern",
+        "employer": "Allatone Solutions Pvt. Ltd.",
+        "location": "Noida",
+        "dates": "Feb 2025 – Jun 2025",
+        "context": "Oracle Cloud Partner — 20+ enterprise clients including Aditya Birla Group, Adani, and Acko.",
+        "blocks": [
           {
-            "title": "Khelo India Knowledge Assistant — live in production on kheloindia.gov.in",
+            "title": "",
             "bullets": [
               {
-                "id": "consulting.exp.0.2.0",
-                "text": "Architected and shipped a citizen-facing multilingual assistant (12 languages, 206 documents) and cut run-rate ~60% — ₹9.4L to ₹3.5L per month, ~₹1.35 per query — by re-architecting the stack, while raising judged answer correctness to 3.9 / 4 on a 213-case evaluation bank."
+                "id": "consulting.exp.1.0.0",
+                "text": "Architected a Docker + GitHub Actions CI/CD pipeline on AWS EC2 + Nginx, cutting deploy time 80% (15 min to under 3) with zero-downtime rolling releases, saving ~2 hrs of manual effort per cycle."
+              },
+              {
+                "id": "consulting.exp.1.0.1",
+                "text": "Engineered a real-time inventory backend (Node.js, PostgreSQL, Redis) automating 3 reconciliation workflows, eliminating ~4 hrs/day of ops overhead, and consolidating 15+ scattered permission checks into one JWT RBAC middleware layer."
               }
             ]
-          },
+          }
+        ]
+      },
+      {
+        "role": "Software Developer Intern",
+        "employer": "CeoTech",
+        "location": "Delhi",
+        "dates": "Aug 2024 – Oct 2024",
+        "context": "Ed-tech platform delivering courses in web development, ML, and embedded systems to students across India.",
+        "blocks": [
           {
-            "title": "Scout — internal bid discovery platform · EY",
+            "title": "",
             "bullets": [
               {
-                "id": "consulting.exp.0.3.0",
-                "text": "Built a crawler and classification service over public procurement portals (GeM, CPPP) with a five-parameter weighted scoring model to qualify tenders against practice fit, plus 31 architecture decision records — delivered alongside the engagement's Senior Manager and Director."
-              }
-            ]
-          },
-          {
-            "title": "MYAS Task Tracker & Khelo India Expenditure Tracker — internal platforms, in production",
-            "bullets": [
+                "id": "consulting.exp.2.0.0",
+                "text": "Reduced frontend render latency by ~28% on a live multi-user ML platform (React DevTools Profiler) via React.memo and lazy loading — zero backend changes, zero regressions."
+              },
               {
-                "id": "consulting.exp.0.4.0",
-                "text": "Authored the architecture, HLD/LLD and deployment design for both and ran them to production on AWS; the expenditure platform tracks ₹924 Cr of scheme budget across 14 regional centres."
+                "id": "consulting.exp.2.0.1",
+                "text": "Built vendor-agnostic normalisation adapters over third-party ML APIs, fully decoupling business logic from vendor schemas and making future API swaps non-breaking."
               }
             ]
           }
         ]
       }
     ],
-    "projects": [],
+    "projects": [
+      {
+        "title": "Medical Assistant Chatbot — Production RAG Pipeline   Python · LangChain · pgvector · FastAPI · Streamlit · OpenAI",
+        "bullets": [
+          {
+            "id": "consulting.proj.0.0",
+            "text": "Delivered a production-ready RAG system over medical knowledge bases: PDF ingestion → semantic chunking → pgvector cosine retrieval → citation-grounded LLM answer via streaming FastAPI endpoint."
+          }
+        ]
+      }
+    ],
     "education": [
       {
-        "qualification": "B.Tech — Electronics and Communication Engineering  ·  GGSIPU, Delhi",
+        "qualification": "B.Tech — Electronics and Communication Engineering",
         "dates": "2021 – 2025"
+      },
+      {
+        "qualification": "Guru Gobind Singh Indraprastha University, Delhi  ·  Minor specialisation: Computer Science",
+        "dates": "CGPA 7.49 / 10"
       }
     ],
     "achievements": [
-      "7x hackathon placer — incl. 1st Place, UHI Hackathon (Spectrum Slam) (1st of 200+ teams) and 2nd Place, BVP-HEX Hackathon.",
+      "7x hackathon placer — incl. 1st Place, UHI Hackathon (Spectrum Slam), 1st of 200+ teams.",
+      "2nd Place — BVP-HEX Hackathon  |  Blockchain pharmaceutical supply chain traceability.",
       "Codeforces Rating 1615 — top ~15% globally across rated competitive programming rounds."
     ]
   },

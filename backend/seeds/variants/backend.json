@@ -2,13 +2,13 @@
   "key": "backend",
   "name": "Backend Engineer",
   "target": "Backend and distributed-systems roles with no AI framing required.",
-  "source_path": "/sessions/jolly-relaxed-goldberg/mnt/outputs/resume/Manas_Sisodia_Backend.docx",
+  "source_path": "/tmp/newres/Manas_Sisodia_Backend.docx",
   "content": {
     "header": {
       "name": "MANAS SISODIA",
       "contact": "LinkedIn  |  9810904048  |  manassisodia3@gmail.com  |  GitHub"
     },
-    "summary": "Backend engineer who takes production systems from schema to deployment — async Python services, queue-backed workers, Postgres at scale and dual-cloud infrastructure. Owns the architecture, HLD/LLD and deployment design for five platforms now running in government production, including a citizen-facing service on kheloindia.gov.in and a ~60,000-LOC platform built solo. Engineers for correctness under load: connection pooling, idempotency, transaction lifetimes and test-gated releases. National-level athlete and 7x hackathon placer.",
+    "summary": "Backend engineer who takes production systems from schema to deployment — async Python services, queue-backed workers, Postgres at scale and dual-cloud infrastructure. Owns the architecture, HLD/LLD and deployment design for five platforms now running in government production, including a citizen-facing service on kheloindia.gov.in and a ~60,000-LOC platform built solo. Engineers for correctness under load: connection pooling, idempotency, transaction lifetimes and test-gated releases.",
     "skills": [
       {
         "label": "Languages",
@@ -64,10 +64,10 @@
     "experience": [
       {
         "role": "Project Analyst",
-        "employer": "EY  (deployed to National e-Governance Division, MeitY)",
+        "employer": "EY (deployed to National e-Governance Division, MeitY)",
         "location": "New Delhi",
         "dates": "May 2026 – Present",
-        "context": "Backend and platform engineering for Government of India digital services — Ministry of Youth Affairs & Sports, Sports Authority of India, and Ministry of Corporate Affairs.",
+        "context": "Lead a team of 4 interns and 1 analyst. Backend and platform engineering for Government of India digital services — Ministry of Youth Affairs & Sports, Sports Authority of India, and Ministry of Corporate Affairs.",
         "blocks": [
           {
             "title": "Khelo India Knowledge Assistant — live in production on kheloindia.gov.in",
@@ -92,10 +92,6 @@
               {
                 "id": "backend.exp.0.1.1",
                 "text": "Tuned the concurrency model for high fan-out — raised anyio worker limits, a shared fan-out executor, a 50-connection upstream pool and explicit transaction release before long blocking calls so idle-in-transaction timeouts cannot kill connections."
-              },
-              {
-                "id": "backend.exp.0.1.2",
-                "text": "Hardened LLM-authored dynamic SQL with sqlglot AST validation (single-statement, SELECT-only, prefixed tables) under statement timeouts, row caps and read-only transactions; 312 tests green, SAST at zero critical findings."
               }
             ]
           },
@@ -109,15 +105,6 @@
               {
                 "id": "backend.exp.0.2.1",
                 "text": "Built a GitHub OIDC CI/CD pipeline with no stored AWS keys: typecheck / lint / audit gate, Buildx ARM64 image with layer cache, and migrations run as a one-off in-VPC Fargate task that aborts the deploy on non-zero exit. Expenditure platform tracks ₹924 Cr across 14 regional centres."
-              }
-            ]
-          },
-          {
-            "title": "Scout — internal bid discovery platform · EY",
-            "bullets": [
-              {
-                "id": "backend.exp.0.3.0",
-                "text": "Built a Python crawler and classification service over public procurement portals (GeM, CPPP) — Playwright ingestion, a five-parameter weighted scoring model, 190 tests, 31 ADRs."
               }
             ]
           }
@@ -135,7 +122,33 @@
             "bullets": [
               {
                 "id": "backend.exp.1.0.0",
-                "text": "Architected a Docker + GitHub Actions CI/CD pipeline on AWS EC2 + Nginx, cutting deploy time 80% (15 min to under 3); built a real-time inventory backend (Node.js, PostgreSQL, Redis) automating 3 reconciliation workflows and eliminating ~4 hrs/day of ops overhead."
+                "text": "Architected a Docker + GitHub Actions CI/CD pipeline on AWS EC2 + Nginx, cutting deploy time 80% (15 min to under 3) with zero-downtime rolling releases, saving ~2 hrs of manual effort per cycle."
+              },
+              {
+                "id": "backend.exp.1.0.1",
+                "text": "Engineered a real-time inventory backend (Node.js, PostgreSQL, Redis) automating 3 reconciliation workflows, eliminating ~4 hrs/day of ops overhead, and consolidating 15+ scattered permission checks into one JWT RBAC middleware layer."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "role": "Software Developer Intern",
+        "employer": "CeoTech",
+        "location": "Delhi",
+        "dates": "Aug 2024 – Oct 2024",
+        "context": "Ed-tech platform delivering courses in web development, ML, and embedded systems to students across India.",
+        "blocks": [
+          {
+            "title": "",
+            "bullets": [
+              {
+                "id": "backend.exp.2.0.0",
+                "text": "Reduced frontend render latency by ~28% on a live multi-user ML platform (React DevTools Profiler) via React.memo and lazy loading — zero backend changes, zero regressions."
+              },
+              {
+                "id": "backend.exp.2.0.1",
+                "text": "Built vendor-agnostic normalisation adapters over third-party ML APIs, fully decoupling business logic from vendor schemas and making future API swaps non-breaking."
               }
             ]
           }
@@ -149,31 +162,23 @@
           {
             "id": "backend.proj.0.0",
             "text": "Scaled an event-driven market data pipeline to 300+ events/sec across three upstream sources via Redis Streams workers with multi-source fallback and rate-limited batching — zero event loss under peak load."
-          },
-          {
-            "id": "backend.proj.0.1",
-            "text": "Cut external API calls ~60% with read-through Redis caching; sub-300ms WebSocket latency across decoupled API / worker / WS layers scaled independently."
-          }
-        ]
-      },
-      {
-        "title": "BetterStack — Distributed Uptime Monitor   Node.js · BullMQ · Redis · PostgreSQL",
-        "bullets": [
-          {
-            "id": "backend.proj.1.0",
-            "text": "Monitored 100+ endpoints at ~500 jobs/min across 20+ concurrent BullMQ workers at <200ms check latency; exponential-backoff retries removed single-attempt timeout false positives."
           }
         ]
       }
     ],
     "education": [
       {
-        "qualification": "B.Tech — Electronics and Communication Engineering  ·  GGSIPU, Delhi",
+        "qualification": "B.Tech — Electronics and Communication Engineering",
         "dates": "2021 – 2025"
+      },
+      {
+        "qualification": "Guru Gobind Singh Indraprastha University, Delhi  ·  Minor specialisation: Computer Science",
+        "dates": "CGPA 7.49 / 10"
       }
     ],
     "achievements": [
-      "7x hackathon placer — incl. 1st Place, UHI Hackathon (Spectrum Slam) (1st of 200+ teams) and 2nd Place, BVP-HEX Hackathon.",
+      "7x hackathon placer — incl. 1st Place, UHI Hackathon (Spectrum Slam), 1st of 200+ teams.",
+      "2nd Place — BVP-HEX Hackathon  |  Blockchain pharmaceutical supply chain traceability.",
       "Codeforces Rating 1615 — top ~15% globally across rated competitive programming rounds."
     ]
   },
