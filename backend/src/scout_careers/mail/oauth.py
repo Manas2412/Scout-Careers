@@ -36,7 +36,7 @@ from pydantic import SecretStr
 from scout_careers.common.config import Settings
 from scout_careers.common.errors import GmailClientSecretsMissing, MailTokenUnreadable
 from scout_careers.common.logging import get_logger
-from scout_careers.mail.scopes import PHASE_1_SCOPES
+from scout_careers.mail.scopes import REQUIRED_SCOPES
 from scout_careers.mail.tokens import OAuthToken, TokenStore
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -221,7 +221,7 @@ def token_from_credentials(credentials: Any) -> OAuthToken:
         # is tz-aware, and ruff's DTZ rules exist to keep it that way.
         expiry = expiry.replace(tzinfo=UTC)
     access_token = getattr(credentials, "token", None)
-    scopes: Sequence[str] = getattr(credentials, "scopes", None) or PHASE_1_SCOPES
+    scopes: Sequence[str] = getattr(credentials, "scopes", None) or REQUIRED_SCOPES
     return OAuthToken(
         refresh_token=SecretStr(str(refresh_token)),
         client_id=str(getattr(credentials, "client_id", "") or ""),
@@ -291,11 +291,11 @@ def authorise_gmail(
     from google_auth_oauthlib.flow import InstalledAppFlow
 
     client_config = resolve_client_config(settings)
-    flow = InstalledAppFlow.from_client_config(client_config, scopes=list(PHASE_1_SCOPES))
+    flow = InstalledAppFlow.from_client_config(client_config, scopes=list(REQUIRED_SCOPES))
 
     log.info(
         "gmail_auth_started",
-        scopes=list(PHASE_1_SCOPES),
+        scopes=list(REQUIRED_SCOPES),
         port=port or "ephemeral",
         open_browser=open_browser,
     )

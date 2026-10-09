@@ -257,14 +257,34 @@ def load_variants(directory: Path) -> list[SeedVariant]:
 #: ``backend/seeds/bullet_tags.yaml`` in a source checkout.
 DEFAULT_BULLET_TAGS_PATH = Path(__file__).resolve().parents[3] / "seeds" / "bullet_tags.yaml"
 
+#: How much of a bullet's opening is stored with its tag, to prove the tag is
+#: still on the line it was written for.
+#:
+#: 40 characters, chosen by measurement rather than taste. On the 2026-10-09
+#: resume rewrite — six documents reordered at once — a 40-character prefix
+#: caught every tag that had landed on different content (five of them carrying
+#: claims, including PQ-Bot's line counts sitting on a tracker bullet and
+#: Khelo's cost figures sitting on a voice bullet) and falsely flagged none of
+#: the lines that were merely reworded. 48 began flagging rewordings; 24 was
+#: enough here but leaves little margin on bullets that open with a common verb.
+TAG_FINGERPRINT_CHARS = 40
+
 
 class BulletTags(BaseModel):
-    """What one resume line proves, and what backs the numbers in it."""
+    """What one resume line proves, and what backs the numbers in it.
+
+    ``text`` is the first :data:`TAG_FINGERPRINT_CHARS` characters of the bullet
+    this tag was written against. It exists because bullet IDs are *positional*:
+    ``seed variants`` could already refuse an ID naming no bullet, but an ID
+    naming the **wrong** bullet passed silently — the position still existed, so
+    nothing looked broken while a claim quietly moved onto an unrelated line.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     skills: list[str] = Field(default_factory=list)
     claims: list[str] = Field(default_factory=list)
+    text: str = ""
 
 
 class BulletTagFile(BaseModel):
@@ -275,20 +295,35 @@ class BulletTagFile(BaseModel):
     bullets: dict[str, BulletTags] = Field(default_factory=dict)
 
 
-def load_bullet_tags(path: Path) -> dict[str, dict[str, list[str]]]:
-    """Read the tag file, or return nothing when it is absent.
+def load_bullet_tag_file(path: Path) -> BulletTagFile:
+    """Parse the tag file, or return an empty one when it is absent.
 
     Absent is allowed: the variants are seedable without tags, they are simply
     inert — no bullet can be selected as proof of anything. Refusing here would
     make a fresh checkout unable to seed at all.
     """
     if not path.exists():
-        return {}
+        return BulletTagFile()
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    parsed = BulletTagFile.model_validate(raw)
+    return BulletTagFile.model_validate(raw)
+
+
+def load_bullet_tags(path: Path) -> dict[str, dict[str, list[str]]]:
+    """The skills and claims per bullet ID, in the shape ``apply_bullet_tags`` wants.
+
+    Deliberately omits the ``text`` fingerprint: it is a *check* on the tag, not
+    part of it, and merging it into ``content`` would put a duplicate of every
+    bullet's opening into the database for nothing.
+    """
     return {
-        key: {"skills": tags.skills, "claims": tags.claims} for key, tags in parsed.bullets.items()
+        key: {"skills": tags.skills, "claims": tags.claims}
+        for key, tags in load_bullet_tag_file(path).bullets.items()
     }
+
+
+def tag_fingerprints(path: Path) -> dict[str, str]:
+    """Bullet ID to the opening text its tag was written against."""
+    return {key: tags.text for key, tags in load_bullet_tag_file(path).bullets.items()}
 
 
 def approved_claim_keys(path: Path) -> frozenset[str]:

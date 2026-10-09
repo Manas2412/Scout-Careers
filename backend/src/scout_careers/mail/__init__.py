@@ -16,12 +16,20 @@ from __future__ import annotations
 
 from scout_careers.mail.gmail import GmailClient, GmailTransport, build_mail_reader
 from scout_careers.mail.oauth import authorise_gmail, client_secrets_guidance
-from scout_careers.mail.scopes import GMAIL_READONLY_SCOPE, PHASE_1_SCOPES
+from scout_careers.mail.scopes import (
+    GMAIL_READONLY_SCOPE,
+    GMAIL_SEND_SCOPE,
+    PHASE_1_SCOPES,
+    REQUIRED_SCOPES,
+    missing_scopes,
+)
 from scout_careers.mail.tokens import OAuthToken, TokenStore
 
 __all__ = [
     "GMAIL_READONLY_SCOPE",
+    "GMAIL_SEND_SCOPE",
     "PHASE_1_SCOPES",
+    "REQUIRED_SCOPES",
     "GmailClient",
     "GmailTransport",
     "OAuthToken",
@@ -29,4 +37,5 @@ __all__ = [
     "authorise_gmail",
     "build_mail_reader",
     "client_secrets_guidance",
+    "missing_scopes",
 ]

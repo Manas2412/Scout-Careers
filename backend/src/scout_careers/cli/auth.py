@@ -26,10 +26,11 @@ from scout_careers.common.errors import (
     GmailClientSecretsMissing,
     MailTokenKeyMissing,
     MailTokenUnreadable,
+    ScoutError,
 )
 from scout_careers.common.logging import configure_logging
 from scout_careers.mail.oauth import authorise_gmail, client_secrets_guidance, store_token
-from scout_careers.mail.scopes import PHASE_1_SCOPES
+from scout_careers.mail.scopes import REQUIRED_SCOPES, missing_scopes
 from scout_careers.mail.tokens import TOKEN_FILE_MODE, TokenStore
 
 app = typer.Typer(no_args_is_help=True, help="Authorise Scout Careers against Google.")
@@ -61,8 +62,14 @@ def gmail(
 ) -> None:
     """Run the desktop OAuth flow and store the refresh token.
 
-    Phase 1 requests exactly one scope, ``gmail.readonly``. The digest's
-    ``gmail.send`` is Phase 2's and is not requested now.
+    Requests ``gmail.readonly`` to read the alert mailbox and ``gmail.send``
+    to deliver the daily digest. ``gmail.send`` can only send — it cannot read,
+    label, modify or delete, and it cannot create drafts — so nothing this build
+    holds can alter mail that already exists in the mailbox.
+
+    An install authorised before the digest existed carries only the read scope.
+    ``scout-careers auth status`` names any scope that is missing; re-consent
+    with ``--force``.
 
     On a headless VM, forward the loopback port from the laptop first:
 
@@ -89,8 +96,8 @@ def gmail(
         )
         raise typer.Exit(code=1)
 
-    echo(f"Requesting {len(PHASE_1_SCOPES)} scope(s):")
-    for scope in PHASE_1_SCOPES:
+    echo(f"Requesting {len(REQUIRED_SCOPES)} scope(s):")
+    for scope in REQUIRED_SCOPES:
         echo(f"  {scope}")
     echo()
 
@@ -119,13 +126,50 @@ def gmail(
     echo("  scout-careers run discovery --dry-run")
 
 
+def _report_stored_scopes(store: TokenStore) -> None:
+    """Say whether the stored grant still covers what this build needs.
+
+    A token issued before the digest existed is *valid* and *insufficient*, and
+    those are different faults with different fixes. Left unreported, the send
+    scope's absence first shows up as a 403 from inside the send path at 08:15
+    on a schedule — the worst possible place to discover a consent problem.
+
+    A token that cannot be decrypted is reported, not raised: ``auth status`` is
+    the command someone runs *because* something is wrong, and it has to survive
+    every state it is meant to diagnose.
+    """
+    if not store.exists():
+        echo("Scopes granted           (no token stored)")
+        return
+    try:
+        granted = store.load().scopes
+    except ScoutError as exc:
+        echo(f"Scopes granted           (token unreadable: {type(exc).__name__})")
+        return
+
+    echo(f"Scopes granted           {', '.join(granted) or '(none recorded)'}")
+    if absent := missing_scopes(granted):
+        echo()
+        echo(f"  This token is missing {len(absent)} required scope(s):")
+        for scope in absent:
+            echo(f"    {scope}")
+        echo()
+        echo("  It was granted before this build needed them. Re-consent with:")
+        echo("    scout-careers auth gmail --force")
+        echo()
+        echo("  Google issues a refresh token only on a fresh consent, so if the")
+        echo("  re-run reports no refresh token, revoke the app first at")
+        echo("  myaccount.google.com/permissions and try again.")
+
+
 @app.command("status")
 def status() -> None:
-    """Report whether Gmail is configured and whether a token is stored.
+    """Report whether Gmail is configured, and whether the stored token is enough.
 
-    Says nothing about the token itself — not its value, not its age, not its
-    length. Only whether the file exists and whether this configuration could
-    decrypt one.
+    Says nothing about the token's *value* — not the refresh token, not the
+    access token, not its length. It does report the granted **scopes**, which
+    are a capability list rather than a secret, and which are the one property
+    of a stored token that can silently stop being sufficient.
     """
     settings = get_settings()
     store = TokenStore.from_settings(settings)
@@ -134,7 +178,8 @@ def status() -> None:
     echo(f"Encryption key present   {str(store.is_encryptable).lower()}")
     echo(f"Token path               {store.path}")
     echo(f"Token stored             {str(store.exists()).lower()}")
-    echo(f"Scopes requested         {', '.join(PHASE_1_SCOPES)}")
+    echo(f"Scopes required          {', '.join(REQUIRED_SCOPES)}")
+    _report_stored_scopes(store)
     if not settings.gmail_configured:
         echo()
         echo("Gmail is not configured. mail_alert sources will be reported `disabled`.")

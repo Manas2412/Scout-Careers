@@ -465,8 +465,7 @@ def test_a_trailing_qualifier_marks_the_list_it_follows() -> None:
     comparable", "or equivalent" all trail the last alternative."""
     vocab = get_vocabulary()
     text = (
-        "Strong systems programming experience in C, C++, Rust, Python, "
-        "or comparable environments"
+        "Strong systems programming experience in C, C++, Rust, Python, or comparable environments"
     )
     alternatives = vocab.resolve_alternatives(text)
     assert alternatives is not None
