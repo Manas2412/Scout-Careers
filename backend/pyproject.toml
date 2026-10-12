@@ -99,8 +99,10 @@ ignore = [
 ]
 
 # Prose uses real en/em dashes and the source data carries non-breaking spaces
-# on purpose; normalisation is exactly what this codebase is testing.
-allowed-confusables = ["\u2013", "\u2014", "\u2019", "\u00a0"]
+# on purpose; normalisation is exactly what this codebase is testing. The two
+# Greek letters are the names MATCH_SCORING.md \u00a712.1 gives its metrics, and the
+# code reads better matching the document it implements than transliterating.
+allowed-confusables = ["\u2013", "\u2014", "\u2019", "\u00a0", "\u03ba", "\u03c1"]
 
 [tool.ruff.lint.per-file-ignores]
 # ARG: a fake/stub deliberately accepts the real signature and ignores most
@@ -239,6 +241,17 @@ name = "the scoring arithmetic stays pure"
 type = "forbidden"
 source_modules = ["scout_careers.scoring.coverage", "scout_careers.scoring.composite", "scout_careers.scoring.gaps", "scout_careers.scoring.adjacency"]
 forbidden_modules = ["scout_careers.db", "scout_careers.llm", "scout_careers.sources", "scout_careers.ingest", "scout_careers.mail", "scout_careers.cli"]
+
+# The eval exists to measure the scorer, so it must be runnable without the
+# thing it measures being wired up: the metrics are checked against worked
+# examples in CI with no database and no model, and the case loader is used by
+# a labelling pass that has neither. Only eval/runner.py — the piece that
+# actually executes a scoring run — may reach further.
+[[tool.importlinter.contracts]]
+name = "the eval metrics and case loader stay pure"
+type = "forbidden"
+source_modules = ["scout_careers.eval.metrics", "scout_careers.eval.cases"]
+forbidden_modules = ["scout_careers.db", "scout_careers.llm", "scout_careers.sources", "scout_careers.ingest", "scout_careers.mail", "scout_careers.scheduler", "scout_careers.cli", "scout_careers.scoring", "scout_careers.extract"]
 
 [[tool.importlinter.contracts]]
 name = "the skill vocabulary and extraction schema stay pure"

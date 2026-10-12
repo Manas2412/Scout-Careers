@@ -1,0 +1,17 @@
+id: 005-consulting
+slice: consulting
+source:
+  company: Elastic
+  captured_at: ''
+  posting_id: 01M1RVK1F07NAYHCRZ5N1M4ZE5
+jd_text_file: 005-consulting.txt
+labels:
+  requirements: []
+  expected_recommended_variant: null
+  expected_top_2: []
+  expected_gaps_include: []
+  expected_generation: allowed
+  expected_coverage: {}
+  expected_variant_order: []
+labelled_by: operator
+labelled_at: null

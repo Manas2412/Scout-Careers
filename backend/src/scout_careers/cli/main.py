@@ -17,6 +17,7 @@ from alembic.config import Config as AlembicConfig
 
 from scout_careers.cli import auth as auth_cli
 from scout_careers.cli import company as company_cli
+from scout_careers.cli import eval as eval_cli
 from scout_careers.cli import extract as extract_cli
 from scout_careers.cli import filters as filters_cli
 from scout_careers.cli import runs as runs_cli
@@ -50,6 +51,7 @@ app.add_typer(score_cli.app, name="score")
 app.add_typer(auth_cli.app, name="auth")
 app.add_typer(extract_cli.app, name="extract")
 app.add_typer(filters_cli.app, name="filter")
+app.add_typer(eval_cli.app, name="eval")
 
 
 def alembic_config(config_path: Path | None = None) -> AlembicConfig:

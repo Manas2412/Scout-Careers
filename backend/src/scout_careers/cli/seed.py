@@ -15,9 +15,9 @@ anything is written, so a malformed board token fails at seed time, not at 02:30
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, date, datetime, time
 from pathlib import Path
-from collections.abc import Mapping
 from typing import Annotated, Any, Literal
 
 import typer
@@ -831,8 +831,8 @@ __all__ = [
     "check_bullet_tags",
     "load_bullet_tag_file",
     "load_bullet_tags",
-    "tag_fingerprints",
     "load_claims",
     "load_seed",
     "load_variants",
+    "tag_fingerprints",
 ]

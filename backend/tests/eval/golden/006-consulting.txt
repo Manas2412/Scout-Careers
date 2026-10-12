@@ -1,0 +1,94 @@
+GitLab is the intelligent orchestration platform for DevSecOps. GitLab enables organizations to increase developer productivity, improve operational efficiency, reduce security and compliance risk, and accelerate digital transformation. More than 50 million registered users and more than 50% of the Fortune 100* trust GitLab to ship better, more secure software faster.
+
+The same principles built into our products are reflected in how our team works: we embrace AI as a core productivity multiplier, with all team members expected to incorporate AI into their daily workflows to drive efficiency, innovation, and impact. GitLab is where careers accelerate, innovation flourishes, and every voice is valued. Our high-performance culture is driven by our values and continuous knowledge exchange, enabling our team members to reach their full potential while collaborating with industry leaders to solve complex problems. Co-create the future with us as we build technology that transforms how the world develops software.
+
+*Fortune 500® is a registered trademark of Fortune Media IP Limited, used under license. Claim based on GitLab data. Fortune 100 refers to the top 20% ranked companies in the 2025 Fortune 500 list, published in June 2025. Fortune and Fortune Media IP Limited are not affiliated with, and do not endorse products or services of GitLab.
+An overview of this role
+
+As an Associate Solutions Architect for GitLab's SMB EMEA Sales team, you'll be a trusted advisor to GitLab prospects and customers, helping them understand how GitLab's DevSecOps platform addresses both technical requirements and business objectives across the entire software development lifecycle. You'll guide organizations through their digital transformation journeys, from planning through monitoring, using your technical expertise, understanding of cloud and modern software development practices, and strong customer empathy. Reporting to a regional Solutions Architect manager and partnering closely with Account Executives and cross-functional teams, you'll own technical evaluations (including proof of value initiatives and workshops), shape solution architectures, and serve as the voice of the customer back to Product Management. You'll focus on driving successful platform adoption, influencing revenue growth through solution selling, and building long-term, trust-based relationships that showcase GitLab's differentiated position in an AI-driven DevSecOps landscape.
+
+What you'll do
+
+• You help drive value and change with software development for one of the fastest-growing platforms. By applying solution selling and architecture experience from planning to monitoring, you also support and enable the successful adoption of the GitLab platform by our SMB EMEA Customers. You work collaboratively with Sales, Customer Success, Engineering, Product Management, and Marketing organizations to realize customer value. Key milestones include:
+
+• In the first 30 days, successful completion of the Solutions Architect Onboarding plan.
+
+• Within two months, collaborate closely with your peers to gain comprehensive knowledge of the GitLab platform, DevOps practices, and associated technologies and learn through shadowing our value selling approach.
+
+• Within three months you start to engage with customers, both onsite and remote, in a technical consultancy and advisor role during the pre-sales process while providing technical assistance and solution guidance.
+
+• In partnership with the sales team, you formulate and execute a sales strategy to exceed revenue targets through the adoption of GitLab.
+
+• With comprehensive knowledge of the GitLab platform and associated technologies, you educate SMB customers on the value proposition of GitLab while participating in discussions throughout the organization to ensure successful GitLab deployment.
+
+• You guide technical evaluations via POC/POV ownership, RFP/audit support, and workshop design.
+
+• You build relationships with people within customer environments to enable them to be GitLab advocates.
+
+• Serve as the customer advocate to other GitLab teams, including Product Development, Sales, and Marketing.
+
+• Continuously improve your professional skills with a focus on personal mastery and team learning through activities such as training, reading, and seeking mentorship from others.
+
+• Maintain specialty competency in one or more technologies related to GitLab's market focus through activities such as training, certification, and creation of working examples for reuse internally and by customers and partners
+
+What you'll bring
+
+• 1-2+ years of experience engaging with customers in pre-sales, consulting, or similar roles, guiding them through solution design and evaluation.
+
+• Experience or an eagerness to understand the end-to-end software development lifecycle, including modern DevSecOps practices and continuous integration and continuous deployment workflows.
+
+• Practical knowledge of cloud computing concepts and related technologies, with the ability to discuss deployment, security, and operations options with technical teams.
+
+• Ability to lead technical evaluations such as proofs of concept or proofs of value, contribute to tenders or audits, and design and run workshops or value stream assessments.
+
+• Clear technical communication and presentation skills, with the ability to adapt messages for practitioners through to senior business and technical decision makers.
+
+• Skill in building trusted relationships, listening with empathy, and acting as a customer advocate to internal teams such as Product, Engineering, Sales, and Marketing.
+
+• Motivation to continuously develop professionally, including learning new technologies, deepening GitLab platform expertise, and applying transferable experience from related fields
+
+• German OR French language fluency - desirable
+
+About the team
+
+We, the Solutions Architect team, are part of GitLab's Sales organization and serve as the technical counterpart to Account Executives, with this role focused on opportunities across our SMB EMEA Sales Segmentation and reporting into a regional Solutions Architect Manager. Our mission is to help customers realize the full value of GitLab's AI-powered DevSecOps platform by advising on architecture, running technical evaluations such as proofs of value, and guiding customers through their digital transformation. We work closely with Sales, Product Management, Engineering, and Marketing, collaborating asynchronously across regions to share best practices, create reusable technical collateral, and act as the voice of the customer. We are focused on helping customers modernize end-to-end software delivery, adopt GitLab at scale, and navigate a rapidly evolving AI and DevSecOps landscape.
+
+How GitLab will support you
+
+• Benefits to support your health, finances, and well-being
+
+• Flexible Paid Time Off 
+
+• Team Member Resource Groups
+
+• Equity Compensation & Employee Stock Purchase Plan
+
+• Growth and Development Fund
+
+• Parental leave 
+
+• Home office support
+
+Please note that we welcome interest from candidates with varying levels of experience; many successful candidates do not meet every single requirement. Additionally, studies have shown that people from underrepresented groups are less likely to apply to a job unless they meet every single qualification. If you're excited about this role, please apply and allow our recruiters to assess your application.
+
+How GitLab Supports Full-Time Employees
+
+• Benefits to support your health, finances, and well-being
+
+• Flexible Paid Time Off 
+
+• Team Member Resource Groups
+
+• Equity Compensation & Employee Stock Purchase Plan
+
+• Growth and Development Fund
+
+• Parental Leave 
+
+Please note that we welcome interest from candidates with varying levels of experience; many successful candidates do not meet every single requirement. Additionally, studies have shown that people from underrepresented groups are less likely to apply to a job unless they meet every single qualification. If you're excited about this role, please apply and allow our recruiters to assess your application.
+
+Country Hiring Guidelines: GitLab hires new team members in countries around the world. All of our roles are remote, however some roles may carry specific location-based eligibility requirements. Our Talent Acquisition team can help answer any questions about location after starting the recruiting process. 
+
+Privacy Policy: Please review our Recruitment Privacy Policy. Your privacy is important to us.
+
+GitLab is proud to be an equal opportunity workplace and is an affirmative action employer. GitLab’s policies and practices relating to recruitment, employment, career development and advancement, promotion, and retirement are based solely on merit, regardless of race, color, religion, ancestry, sex (including pregnancy, lactation, sexual orientation, gender identity, or gender expression), national origin, age, citizenship, marital status, mental or physical disability, genetic information (including family medical history), discharge status from the military, protected veteran status (which includes disabled veterans, recently separated veterans, active duty wartime or campaign badge veterans, and Armed Forces service medal veterans), or any other basis protected by law. GitLab will not tolerate discrimination or harassment based on any of these characteristics. See also GitLab’s EEO Policy and EEO is the Law. If you have a disability or special need that requires accommodation, please let us know during the recruiting process.

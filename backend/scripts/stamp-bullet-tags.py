@@ -103,7 +103,9 @@ def main() -> int:
         # new one is written in a single known place.
         body: list[str] = []
         old_stamp: str | None = None
-        while index < len(lines) and not ID_LINE.match(lines[index]) and lines[index].startswith(" "):
+        while (
+            index < len(lines) and not ID_LINE.match(lines[index]) and lines[index].startswith(" ")
+        ):
             if TEXT_LINE.match(lines[index]):
                 old_stamp = lines[index].split(":", 1)[1].strip().strip('"')
             else:
@@ -127,8 +129,10 @@ def main() -> int:
             unchanged += 1
 
     print()
-    print(f"  {unchanged} unchanged   {len(added)} newly stamped   {len(moved)} MOVED   "
-          f"{len(orphaned)} naming no bullet")
+    print(
+        f"  {unchanged} unchanged   {len(added)} newly stamped   {len(moved)} MOVED   "
+        f"{len(orphaned)} naming no bullet"
+    )
 
     if moved:
         print()

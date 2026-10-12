@@ -1,0 +1,17 @@
+id: 002-consulting
+slice: consulting
+source:
+  company: Databricks
+  captured_at: ''
+  posting_id: 01M1RVK0H8EEZGF04BKVBX3ASN
+jd_text_file: 002-consulting.txt
+labels:
+  requirements: []
+  expected_recommended_variant: null
+  expected_top_2: []
+  expected_gaps_include: []
+  expected_generation: allowed
+  expected_coverage: {}
+  expected_variant_order: []
+labelled_by: operator
+labelled_at: null
